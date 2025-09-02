@@ -1,12 +1,9 @@
 <?php
 require_once __DIR__ . '/config.php';
-
-// search.php
-
-// Use config.php variables for JIRA
-$jiraDomain = $JIRA_DOMAIN;
-$email = $JIRA_EMAIL;
-$apiToken = $JIRA_API_TOKEN;
+// Ensure config variables are available
+$jiraDomain = isset($JIRA_DOMAIN) ? $JIRA_DOMAIN : '';
+$email = isset($JIRA_EMAIL) ? $JIRA_EMAIL : '';
+$apiToken = isset($JIRA_API_TOKEN) ? $JIRA_API_TOKEN : '';
 
 // Fetch projects
 $ch = curl_init();
@@ -61,9 +58,66 @@ curl_close($ch);
 $maxResults = 50;
 $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
 $startAt = ($page - 1) * $maxResults;
+
+// Fetch custom fields for dropdown if a project is selected
+$customFields = [];
+if (!empty($_GET['project'])) {
+    $ch = curl_init();
+    curl_setopt_array($ch, [
+        CURLOPT_URL => $jiraDomain . "/rest/api/3/field",
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER => [
+            "Authorization: Basic " . base64_encode("$email:$apiToken"),
+            "Accept: application/json"
+        ]
+    ]);
+    $fieldsResponse = curl_exec($ch);
+    if (!curl_errno($ch)) {
+        $fieldsData = json_decode($fieldsResponse, true);
+        foreach ($fieldsData as $field) {
+            // Only show custom fields
+            if (isset($field['custom']) && $field['custom'] && strpos($field['id'], 'customfield_') === 0) {
+                $customFields[$field['id']] = $field['name'];
+            }
+        }
+    }
+    curl_close($ch);
+}
+
+// Find custom field IDs for required fields if a project is selected
+$requiredCustomFields = [
+    'Pull  from Repository' => null,
+    'Pull Main Diff URL' => null,
+    'Pull Main Branch' => null
+];
+if (!empty($_GET['project'])) {
+    $ch = curl_init();
+    curl_setopt_array($ch, [
+        CURLOPT_URL => $jiraDomain . "/rest/api/3/field",
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER => [
+            "Authorization: Basic " . base64_encode("$email:$apiToken"),
+            "Accept: application/json"
+        ]
+    ]);
+    $fieldsResponse = curl_exec($ch);
+    if (!curl_errno($ch)) {
+        $fieldsData = json_decode($fieldsResponse, true);
+        foreach ($fieldsData as $field) {
+            if (isset($field['custom']) && $field['custom'] && isset($field['name'])) {
+                foreach ($requiredCustomFields as $name => $id) {
+                    if (strtolower($field['name']) === strtolower($name)) {
+                        $requiredCustomFields[$name] = $field['id'];
+                    }
+                }
+            }
+        }
+    }
+    curl_close($ch);
+}
 ?>
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <title>JIRA Issue Search</title>
 </head>
@@ -78,7 +132,7 @@ require_once __DIR__ . '/template/header.php';
       <div class="row g-3 align-items-center">
         <div class="col-md-4">
           <label for="project" class="form-label">Project</label>
-          <select name="project" id="project" class="form-select" required>
+          <select name="project" id="project" class="form-select" required onchange="this.form.submit()">
             <option value="">Select a project</option>
             <?php foreach ($projects as $project): ?>
               <option value="<?php echo htmlspecialchars($project['key']); ?>"
@@ -109,6 +163,14 @@ require_once __DIR__ . '/template/header.php';
           <button type="submit" class="btn btn-primary w-100">Search</button>
         </div>
       </div>
+      <div class="row mt-3">
+        <div class="col-md-12">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="coworkers" id="coworkers" value="1" <?php if (isset($_GET['coworkers']) && $_GET['coworkers'] == '1') echo 'checked'; ?>>
+            <label class="form-check-label" for="coworkers">Coworkers</label>
+          </div>
+        </div>
+      </div>
     </form>
   </div>
 </div>
@@ -117,14 +179,17 @@ require_once __DIR__ . '/template/header.php';
 // Handle form submission for saving selected issues
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save'])) {
     $selected = isset($_POST['selected_issues']) ? $_POST['selected_issues'] : [];
-    $mysqli = new mysqli($DB_HOST, $DB_USER, $DB_PASS, $DB_NAME, $DB_PORT);
+    $mysqli = new mysqli(isset($DB_HOST) ? $DB_HOST : 'localhost', isset($DB_USER) ? $DB_USER : '', isset($DB_PASS) ? $DB_PASS : '', isset($DB_NAME) ? $DB_NAME : '', isset($DB_PORT) ? $DB_PORT : 3306);
     if ($mysqli->connect_errno) {
         echo "Failed to connect to MySQL: (" . $mysqli->connect_errno . ") " . $mysqli->connect_error;
         exit();
     }
     foreach ($selected as $keyname) {
-        $stmt = $mysqli->prepare("INSERT INTO saved_issues (keyname) VALUES (?)");
-        $stmt->bind_param("s", $keyname);
+        $pull_from_repository = isset($_POST['pull_from_repository'][$keyname]) ? $_POST['pull_from_repository'][$keyname] : null;
+        $pull_main_diff_url = isset($_POST['pull_main_diff_url'][$keyname]) ? $_POST['pull_main_diff_url'][$keyname] : null;
+        $pull_main_branch = isset($_POST['pull_main_branch'][$keyname]) ? $_POST['pull_main_branch'][$keyname] : null;
+        $stmt = $mysqli->prepare("INSERT INTO saved_issues (keyname, pull_from_repository, pull_main_diff_url, pull_main_branch) VALUES (?, ?, ?, ?)");
+        $stmt->bind_param("ssss", $keyname, $pull_from_repository, $pull_main_diff_url, $pull_main_branch);
         $stmt->execute();
         $stmt->close();
     }
@@ -137,16 +202,40 @@ if (!empty($_GET['keywords']) && !empty($_GET['project'])) {
     $keywords = htmlspecialchars($_GET['keywords']);
     $projectKey = htmlspecialchars($_GET['project']);
     $status = !empty($_GET['status']) ? htmlspecialchars($_GET['status']) : '';
-    $jql = "project = \"$projectKey\" AND text ~ \"$keywords\"";
+    $jql = "project = \"$projectKey\" AND textfields ~ \"$keywords*\"";
     if ($status) {
         $jql .= " AND status = \"$status\"";
     }
+    // Coworkers filter
+    if (isset($_GET['coworkers']) && $_GET['coworkers'] == '1') {
+        $mysqli = new mysqli(isset($DB_HOST) ? $DB_HOST : 'localhost', isset($DB_USER) ? $DB_USER : '', isset($DB_PASS) ? $DB_PASS : '', isset($DB_NAME) ? $DB_NAME : '', isset($DB_PORT) ? $DB_PORT : 3306);
+        // Get current user's email and coworkers' emails
+        $coworkerEmails = [$email];
+        if (!$mysqli->connect_errno) {
+            $res = $mysqli->query("SELECT email FROM coworkers");
+            while ($row = $res->fetch_assoc()) {
+                $coworkerEmails[] = $row['email'];
+            }
+            $res->close();
+        }
+        $mysqli->close();
+        if (!empty($coworkerEmails)) {
+            $emailList = array_map(function($e) { return '"' . addslashes($e) . '"'; }, $coworkerEmails);
+            $emailJQL = implode(",", $emailList);
+            $jql .= " AND (assignee IN ($emailJQL) OR reporter IN ($emailJQL) OR voter IN ($emailJQL) OR watcher IN ($emailJQL) OR \"Participants[Participants of an issue]\" IN ($emailJQL))";
+        }
+    }
     $jql .= " ORDER BY updated DESC";
     $jql = urlencode($jql);
-
+    // Build fields param for JIRA search
+    $fieldsParam = ['summary', 'status', 'updated'];
+    foreach ($requiredCustomFields as $id) {
+        if ($id) $fieldsParam[] = $id;
+    }
+    $fieldsQuery = !empty($fieldsParam) ? '&fields=' . urlencode(implode(',', $fieldsParam)) : '';
     $ch = curl_init();
     curl_setopt_array($ch, [
-            CURLOPT_URL => $jiraDomain . "/rest/api/3/search?jql=" . $jql . "&startAt=$startAt&maxResults=$maxResults",
+            CURLOPT_URL => $jiraDomain . "/rest/api/3/search?jql=" . $jql . "&startAt=$startAt&maxResults=$maxResults" . $fieldsQuery,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HTTPHEADER => [
                     "Authorization: Basic " . base64_encode("$email:$apiToken"),
@@ -171,14 +260,26 @@ if (!empty($_GET['keywords']) && !empty($_GET['project'])) {
                 echo '<th scope="col">Issue Key</th>';
                 echo '<th scope="col">Title</th>';
                 echo '<th scope="col">Status</th>';
+                foreach ($requiredCustomFields as $name => $id) {
+                    echo '<th scope="col">' . htmlspecialchars($name) . '</th>';
+                }
                 echo '</tr></thead><tbody>';
                 foreach ($data['issues'] as $issue) {
                     $key = htmlspecialchars($issue['key']);
                     $jiraUrl = $jiraDomain . '/browse/' . urlencode($issue['key']);
                     $summary = htmlspecialchars($issue['fields']['summary']);
                     $statusName = htmlspecialchars($issue['fields']['status']['name']);
-                    $updatedRaw = $issue['fields']['updated'] ?? null;
+                    $updatedRaw = isset($issue['fields']['updated']) ? $issue['fields']['updated'] : null;
                     $updatedDate = $updatedRaw ? date('Y-m-d H:i:s', strtotime($updatedRaw)) : '';
+                    // Get custom field values
+                    $cfValues = [];
+                    foreach ($requiredCustomFields as $name => $id) {
+                        $cfValue = ($id && isset($issue['fields'][$id])) ? $issue['fields'][$id] : '';
+                        if (is_array($cfValue) || is_object($cfValue)) {
+                            $cfValue = json_encode($cfValue);
+                        }
+                        $cfValues[$name] = $cfValue;
+                    }
                     echo '<tr>';
                     echo '<td><input type="checkbox" name="selected_issues[]" value="' . $key . '"></td>';
                     echo '<td style="white-space:nowrap;"><a href="' . $jiraUrl . '" target="_blank"><strong>' . $key . '</strong></a></td>';
@@ -188,6 +289,14 @@ if (!empty($_GET['keywords']) && !empty($_GET['project'])) {
                         echo '<br><small class="text-muted">Updated: ' . $updatedDate . '</small>';
                     }
                     echo '</td>';
+                    foreach ($requiredCustomFields as $name => $id) {
+                        $displayValue = $cfValues[$name] !== '' ? $cfValues[$name] : 'N/A';
+                        echo '<td>' . htmlspecialchars($displayValue) . '</td>';
+                    }
+                    // Add hidden fields for saving
+                    echo '<input type="hidden" name="pull_from_repository[' . $key . ']" value="' . htmlspecialchars($cfValues['Pull  from Repository']) . '">';
+                    echo '<input type="hidden" name="pull_main_diff_url[' . $key . ']" value="' . htmlspecialchars($cfValues['Pull Main Diff URL']) . '">';
+                    echo '<input type="hidden" name="pull_main_branch[' . $key . ']" value="' . htmlspecialchars($cfValues['Pull Main Branch']) . '">';
                     echo '</tr>';
                 }
                 echo '</tbody></table>';

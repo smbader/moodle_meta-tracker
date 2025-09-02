@@ -9,5 +9,13 @@
   <table name="saved_issues">
     <column name="id" type="INT" autoincrement="true" primary="true" />
     <column name="keyname" type="VARCHAR(255)" notnull="true" />
+    <column name="pull_from_repository" type="TEXT" />
+    <column name="pull_main_diff_url" type="TEXT" />
+    <column name="pull_main_branch" type="TEXT" />
+  </table>
+  <table name="config">
+    <column name="id" type="INT" autoincrement="true" primary="true" />
+    <column name="name" type="VARCHAR(64)" notnull="true" />
+    <column name="value" type="TEXT" />
   </table>
 </database>

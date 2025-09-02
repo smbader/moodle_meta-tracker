@@ -75,6 +75,14 @@ function syncSchema($mysqli, $current, $desired) {
     return $changes;
 }
 
+// Ensure config table exists
+$mysqli = new mysqli($DB_HOST, $DB_USER, $DB_PASS, $DB_NAME, $DB_PORT);
+$mysqli->query("CREATE TABLE IF NOT EXISTS config (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(64) NOT NULL UNIQUE,
+    value TEXT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
 $mysqli = new mysqli($DB_HOST, $DB_USER, $DB_PASS, $DB_NAME, $DB_PORT);
 if ($mysqli->connect_errno) {
     echo "<div class='alert alert-danger'>Failed to connect to MySQL: (" . $mysqli->connect_errno . ") " . $mysqli->connect_error . "</div>";
@@ -95,4 +103,3 @@ if ($changes) {
 }
 
 require_once __DIR__ . '/template/footer.php';
-

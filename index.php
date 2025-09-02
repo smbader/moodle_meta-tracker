@@ -1,29 +1,7 @@
 <?php
-$pageTitle = "LAMP STACK";
+$pageTitle = "Dashboard";
 require_once __DIR__ . '/template/header.php';
 ?>
-<!DOCTYPE html>
-<html lang="en">
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>LAMP STACK</title>
-        <link rel="shortcut icon" href="/assets/images/favicon.svg" type="image/svg+xml">
-        <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
-    </head>
-    <body>
-        <section class="hero is-medium is-info is-bold">
-            <div class="hero-body">
-                <div class="container has-text-centered">
-                    <h1 class="title">
-                        LAMP STACK - Steve
-                    </h1>
-                    <h2 class="subtitle">
-                        Your local development environment
-                    </h2>
-                </div>
-            </div>
-        </section>
         <section class="section">
             <div class="container">
                 <div class="row g-4">
@@ -102,14 +80,4 @@ require_once __DIR__ . '/template/header.php';
                 </div>
             </div>
         </section>
-        <footer class="footer">
-            <div class="content has-text-centered">
-                <p>
-                    <strong><a href="https://www.sprintcube.com" target="_blank">SprintCube</a></strong><br>
-                    The source code is released under the <a href="https://github.com/sprintcube/docker-compose-lamp/blob/master/LICENSE" target="_blank">MIT license</a>.
-                </p>
-            </div>
-        </footer>
-    </body>
-</html>
 <?php require_once __DIR__ . '/template/footer.php'; ?>

@@ -5,8 +5,7 @@
 <footer class="footer bg-light border-top mt-5 py-4">
     <div class="container text-center">
         <p>
-            <strong><a href="https://www.sprintcube.com" target="_blank">SprintCube</a></strong><br>
-            The source code is released under the <a href="https://github.com/sprintcube/docker-compose-lamp/blob/master/LICENSE" target="_blank">MIT license</a>.
+            Moodle Issue Tracking created at Moodle DACH DevJam.
         </p>
     </div>
 </footer>
