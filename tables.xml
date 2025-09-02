@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<database>
+  <table name="coworkers">
+    <column name="id" type="INT" autoincrement="true" primary="true" />
+    <column name="fullname" type="VARCHAR(255)" notnull="true" />
+    <column name="email" type="VARCHAR(255)" notnull="true" />
+    <column name="github_handle" type="VARCHAR(255)" notnull="true" />
+  </table>
+  <table name="saved_issues">
+    <column name="id" type="INT" autoincrement="true" primary="true" />
+    <column name="keyname" type="VARCHAR(255)" notnull="true" />
+  </table>
+</database>

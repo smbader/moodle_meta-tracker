@@ -1,0 +1,26 @@
+/* custom.css: additional style tweaks for Bootstrap integration */
+
+/* Navbar brand font weight */
+.navbar-brand {
+    font-weight: bold;
+}
+
+/* Card header color override for primary */
+.card-header.bg-primary {
+    background-color: #0d6efd !important;
+    color: #fff !important;
+}
+
+/* Table tweaks */
+.table th {
+    background: #f5f5f5;
+    font-weight: bold;
+}
+.table td {
+    background: #fff;
+}
+
+/* Button spacing */
+.btn {
+    margin-bottom: 0.5em;
+}
