@@ -21,8 +21,16 @@
     <div class="collapse navbar-collapse" id="navbarNav">
       <ul class="navbar-nav ms-auto">
         <li class="nav-item"><a class="nav-link" href="/index.php">Dashboard</a></li>
-        <li class="nav-item"><a class="nav-link" href="/search.php">JIRA Search</a></li>
         <li class="nav-item"><a class="nav-link" href="/kanban.php">Kanban</a></li>
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" id="addIssueDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            Add Issue
+          </a>
+          <ul class="dropdown-menu" aria-labelledby="addIssueDropdown">
+            <li><a class="dropdown-item" href="/search.php">JIRA</a></li>
+            <li><a class="dropdown-item" href="/add_github_issue.php">GitHub</a></li>
+          </ul>
+        </li>
         <li class="nav-item dropdown">
           <a class="nav-link dropdown-toggle" href="#" id="managementDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
             Management
@@ -31,14 +39,6 @@
             <li><a class="dropdown-item" href="/coworkers.php">Work Group</a></li>
             <li><a class="dropdown-item" href="/credentials.php">Credentials</a></li>
             <li><a class="dropdown-item" href="/internal_settings.php">Internal Settings</a></li>
-          </ul>
-        </li>
-        <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle" href="#" id="githubDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-            GitHub
-          </a>
-          <ul class="dropdown-menu" aria-labelledby="githubDropdown">
-            <li><a class="dropdown-item" href="/add_github_issue.php">Add GitHub Issue</a></li>
           </ul>
         </li>
         <?php if (isset($_SESSION['user_id'])): ?>
