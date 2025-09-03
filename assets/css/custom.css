@@ -29,3 +29,34 @@
 .btn {
     margin-bottom: 0.5em;
 }
+
+/* Kanban card content wrapping */
+.card-title, .card-body, .badge, .swimlane-header {
+    word-break: break-word;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+/* Ensure swimlane headers wrap and don't overflow */
+.swimlane-header {
+    display: block;
+    word-break: break-word;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.3;
+}
+
+/* Ensure badges wrap if needed */
+.badge {
+    word-break: break-word;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.2;
+    max-width: 100%;
+    display: inline-block;
+}
+
+/* Prevent horizontal scroll on card content */
+.kanban-col .card-body {
+    overflow-x: auto;
+}

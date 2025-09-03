@@ -81,7 +81,7 @@ $stmt->close();
 
 // Fetch all internal issues for the user, indexed by keyname
 $internalIssues = [];
-$stmt = $mysqli->prepare("SELECT * FROM issues WHERE internal_status_id IN (SELECT id FROM statuses WHERE user_id = ?) OR internal_status_id IS NULL");
+$stmt = $mysqli->prepare("SELECT * FROM issues WHERE internal_status_id IN (SELECT id FROM statuses WHERE user_id = ?) OR internal_status_id = 0");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $res = $stmt->get_result();
@@ -97,24 +97,28 @@ foreach ($savedIssues as $keyname => $saved) {
     if (isset($internalIssues[$keyname])) {
         // Merge, internal fields take lower priority
         $merged = array_merge($internalIssues[$keyname], $saved);
+        // Always keep the issues.id as internal_issue_id
+        $merged['internal_issue_id'] = $internalIssues[$keyname]['id'];
+    } else {
+        $merged['internal_issue_id'] = null;
     }
     $allIssues[] = $merged;
 }
 $mysqli->close();
 
-// Fetch coworkers for each merged issue (if internal id exists)
+// Fetch coworkers for each merged issue (if internal_issue_id exists)
 $issueCoworkers = [];
 $mysqli = new mysqli($DB_HOST, $DB_USER, $DB_PASS, $DB_NAME, $DB_PORT);
 foreach ($allIssues as $issue) {
-    $issue_id = isset($issue['id']) ? $issue['id'] : null;
-    $issueCoworkers[$issue_id] = [];
-    if (!empty($issue_id)) {
+    $internal_issue_id = isset($issue['internal_issue_id']) ? $issue['internal_issue_id'] : null;
+    $issueCoworkers[$internal_issue_id] = [];
+    if (!empty($internal_issue_id)) {
         $stmt = $mysqli->prepare("SELECT c.fullname FROM issue_coworkers ic JOIN coworkers c ON ic.coworker_id = c.id WHERE ic.issue_id = ?");
-        $stmt->bind_param("i", $issue_id);
+        $stmt->bind_param("i", $internal_issue_id);
         $stmt->execute();
         $res = $stmt->get_result();
         while ($row = $res->fetch_assoc()) {
-            $issueCoworkers[$issue_id][] = $row['fullname'];
+            $issueCoworkers[$internal_issue_id][] = $row['fullname'];
         }
         $stmt->close();
     }
@@ -124,20 +128,26 @@ $mysqli->close();
 // Fetch JIRA details for each merged issue
 foreach ($allIssues as &$issue) {
     $jira = null;
-    if (!empty($issue['keyname'])) {
+    if (!empty($issue['keyname']) && (isset($issue['source_type']) && $issue['source_type'] === 'jira')) {
         $jira = fetchJiraIssue($issue['keyname'], $JIRA_DOMAIN, $JIRA_EMAIL, $JIRA_API_TOKEN);
     }
     $issue['jira_summary'] = isset($jira['summary']) ? $jira['summary'] : (isset($issue['title']) ? $issue['title'] : '[No summary]');
-    $issue['jira_status'] = isset($jira['status']) ? $jira['status'] : '[No JIRA Status]';
+    $issue['jira_status'] = isset($jira['status']) ? $jira['status'] : (isset($issue['status']) && $issue['source_type'] === 'github' ? $issue['status'] : null);
     $issue['jira_updated'] = isset($jira['updated']) ? $jira['updated'] : '';
     $issue['jira_assignee'] = isset($jira['assignee']) ? $jira['assignee'] : '[No assignee]';
+    // Unified status for swimlane
+    if (isset($issue['source_type']) && $issue['source_type'] === 'github') {
+        $issue['unified_status'] = isset($issue['status']) ? $issue['status'] : 'Unknown';
+    } else {
+        $issue['unified_status'] = isset($issue['jira_status']) ? $issue['jira_status'] : 'Unknown';
+    }
 }
 unset($issue);
 
 // Build a set of valid status IDs for the user
 $validStatusIds = array_map(function($s) { return $s['id']; }, $statuses);
 
-// Organize issues by column (internal status), then by swim lane (JIRA status)
+// Organize issues by column (internal status), then by swim lane (unified status)
 $issuesByColumnAndLane = [];
 foreach ($columns as $col) {
     $issuesByColumnAndLane[$col['id']] = [];
@@ -147,7 +157,7 @@ foreach ($allIssues as $issue) {
     if (empty($issue['internal_status_id']) || !in_array($issue['internal_status_id'], $validStatusIds)) {
         $colId = $noStatusId;
     }
-    $lane = isset($issue['jira_status']) ? $issue['jira_status'] : '[No JIRA Status]';
+    $lane = isset($issue['unified_status']) ? $issue['unified_status'] : 'Unknown';
     if (!isset($issuesByColumnAndLane[$colId][$lane])) {
         $issuesByColumnAndLane[$colId][$lane] = [];
     }
@@ -183,12 +193,18 @@ $laneColors = [
                         </a>: <?= htmlspecialchars(isset($issue['jira_summary']) ? $issue['jira_summary'] : '[No summary]') ?>
                       </h6>
                       <div class="mb-1">
-                        <span class="badge bg-info text-dark">JIRA Status: <?= htmlspecialchars(isset($issue['jira_status']) ? $issue['jira_status'] : '[No JIRA Status]') ?></span>
+                        <span class="badge bg-info text-dark">
+                          <?php if (isset($issue['source_type']) && $issue['source_type'] === 'github'): ?>
+                            GitHub Status: <?= htmlspecialchars(isset($issue['jira_status']) ? $issue['jira_status'] : '[No GitHub Status]') ?>
+                          <?php else: ?>
+                            JIRA Status: <?= htmlspecialchars(isset($issue['jira_status']) ? $issue['jira_status'] : '[No JIRA Status]') ?>
+                          <?php endif; ?>
+                        </span>
                         <span class="badge bg-light text-dark">Assignee: <?= htmlspecialchars(isset($issue['jira_assignee']) ? $issue['jira_assignee'] : '[No assignee]') ?></span>
                       </div>
                       <div class="mb-1">
-                        <?php if (!empty($issueCoworkers[$issue['id']])): ?>
-                          <?php foreach ($issueCoworkers[$issue['id']] as $coworker): ?>
+                        <?php if (!empty($issueCoworkers[$issue['internal_issue_id']])): ?>
+                          <?php foreach ($issueCoworkers[$issue['internal_issue_id']] as $coworker): ?>
                             <span class="badge bg-secondary text-light"><?= htmlspecialchars($coworker) ?></span>
                           <?php endforeach; ?>
                         <?php else: ?>

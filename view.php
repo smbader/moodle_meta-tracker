@@ -133,6 +133,7 @@ if ($sourceType === 'jira') {
         $stmt->bind_result($issue_id);
         $found = $stmt->fetch();
         $stmt->close();
+        echo 'Here is the current issue id ' . $issue_id;
         if ($found) {
             $stmt = $mysqli->prepare('UPDATE issues SET internal_status_id = ?, notes = ? WHERE id = ?');
             $stmt->bind_param('isi', $internal_status_id, $notes, $issue_id);
@@ -266,6 +267,7 @@ if ($sourceType === 'jira') {
         $stmt->bind_result($issue_id);
         $found = $stmt->fetch();
         $stmt->close();
+        echo 'Here is the current issue id ' . $issue_id;
         if ($found) {
             $stmt = $mysqli->prepare('UPDATE issues SET internal_status_id = ?, notes = ? WHERE id = ?');
             $stmt->bind_param('isi', $internal_status_id, $notes, $issue_id);
@@ -373,7 +375,7 @@ if ($sourceType === 'jira') {
           </select>
         </div>
         <div class="mb-3">
-          <label for="coworker_ids" class="form-label">Assigned Coworkers</label>
+          <label for="coworker_ids" class="form-label">Assign Worker</label>
           <select name="coworker_ids[]" id="coworker_ids" class="form-select" multiple>
             <?php foreach ($coworkers as $coworker): ?>
               <option value="<?= $coworker['id'] ?>" <?= in_array($coworker['id'], $assigned_coworkers) ? 'selected' : '' ?>><?= htmlspecialchars($coworker['fullname']) ?></option>
