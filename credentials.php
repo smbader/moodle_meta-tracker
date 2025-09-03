@@ -1,5 +1,10 @@
 <?php
 require_once __DIR__ . '/config.php';
+session_start();
+if (!isset($_SESSION['user_id'])) {
+    header('Location: login.php');
+    exit();
+}
 $pageTitle = "Manage Credentials";
 require_once __DIR__ . '/template/header.php';
 
@@ -11,26 +16,37 @@ if ($mysqli->connect_errno) {
     exit;
 }
 
+$user_id = $_SESSION['user_id'];
+echo "Current User ID: " . htmlspecialchars($user_id);
+
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $fields = ['jira_email', 'jira_token', 'jira_domain'];
     foreach ($fields as $field) {
         $value = $mysqli->real_escape_string(isset($_POST[$field]) ? $_POST[$field] : '');
         $name = $mysqli->real_escape_string($field);
-        // Upsert config value
-        $mysqli->query("INSERT INTO config (name, value) VALUES ('$name', '$value') ON DUPLICATE KEY UPDATE value='$value'");
+        // Upsert config value for this user
+        $stmt = $mysqli->prepare("INSERT INTO config (user_id, name, value) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE value=?");
+        $stmt->bind_param("isss", $user_id, $name, $value, $value);
+        if (!$stmt->execute()) {
+            echo '<div class="alert alert-danger">SQL Error: ' . htmlspecialchars($stmt->error) . '</div>';
+        }
+        $stmt->close();
     }
     echo "<div class='alert alert-success'>Credentials saved.</div>";
 }
 
-// Fetch current values
+// Fetch current values for this user
 $config = [];
-$res = $mysqli->query("SELECT name, value FROM config WHERE name IN ('jira_email','jira_token','jira_domain')");
+$stmt = $mysqli->prepare("SELECT name, value FROM config WHERE user_id = ? AND name IN ('jira_email','jira_token','jira_domain')");
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$res = $stmt->get_result();
 while ($row = $res->fetch_assoc()) {
     $config[$row['name']] = $row['value'];
 }
-$res->close();
-
+$stmt->close();
+$mysqli->close();
 ?>
 <h2>JIRA Credentials</h2>
 <form method="post" class="mb-4">

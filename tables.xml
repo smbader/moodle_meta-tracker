@@ -1,13 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <database>
+  <table name="users">
+    <column name="id" type="INT" autoincrement="true" primary="true" />
+    <column name="email" type="VARCHAR(255)" notnull="true" unique="true" />
+    <column name="password_hash" type="VARCHAR(255)" notnull="true" />
+    <column name="fullname" type="VARCHAR(255)" notnull="true" />
+  </table>
   <table name="coworkers">
     <column name="id" type="INT" autoincrement="true" primary="true" />
+    <column name="user_id" type="INT" notnull="true" />
     <column name="fullname" type="VARCHAR(255)" notnull="true" />
     <column name="email" type="VARCHAR(255)" notnull="true" />
     <column name="github_handle" type="VARCHAR(255)" notnull="true" />
   </table>
   <table name="saved_issues">
     <column name="id" type="INT" autoincrement="true" primary="true" />
+    <column name="user_id" type="INT" notnull="true" />
     <column name="keyname" type="VARCHAR(255)" notnull="true" />
     <column name="pull_from_repository" type="TEXT" />
     <column name="pull_main_diff_url" type="TEXT" />
@@ -15,7 +23,12 @@
   </table>
   <table name="config">
     <column name="id" type="INT" autoincrement="true" primary="true" />
+    <column name="user_id" type="INT" notnull="true" />
     <column name="name" type="VARCHAR(64)" notnull="true" />
     <column name="value" type="TEXT" />
+    <unique name="user_config_unique">
+      <column name="user_id" />
+      <column name="name" />
+    </unique>
   </table>
 </database>

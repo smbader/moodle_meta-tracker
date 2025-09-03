@@ -1,9 +1,16 @@
 <?php
 require_once __DIR__ . '/config.php';
-// Ensure config variables are available
-$jiraDomain = isset($JIRA_DOMAIN) ? $JIRA_DOMAIN : '';
-$email = isset($JIRA_EMAIL) ? $JIRA_EMAIL : '';
-$apiToken = isset($JIRA_API_TOKEN) ? $JIRA_API_TOKEN : '';
+session_start();
+if (!isset($_SESSION['user_id'])) {
+    header('Location: login.php');
+    exit();
+}
+
+// Use getUserConfig to fetch JIRA credentials for the logged-in user
+$user_id = $_SESSION['user_id'];
+$jiraDomain = getUserConfig($user_id, 'jira_domain');
+$email = getUserConfig($user_id, 'jira_email');
+$apiToken = getUserConfig($user_id, 'jira_token');
 
 // Fetch projects
 $ch = curl_init();

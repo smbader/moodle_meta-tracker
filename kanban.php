@@ -1,5 +1,10 @@
 <?php
 require_once __DIR__ . '/config.php';
+session_start();
+if (!isset($_SESSION['user_id'])) {
+    header('Location: login.php');
+    exit();
+}
 $pageTitle = "Kanban Board";
 include __DIR__ . "/template/header.php";
 
@@ -47,13 +52,22 @@ if ($mysqli->connect_errno) {
     exit;
 }
 
-// Fetch all saved issues
-$res = $mysqli->query("SELECT id, keyname FROM saved_issues");
+$user_id = $_SESSION['user_id'];
+// Fetch user-specific JIRA credentials
+$JIRA_DOMAIN = getUserConfig($user_id, 'jira_domain');
+$JIRA_EMAIL = getUserConfig($user_id, 'jira_email');
+$JIRA_API_TOKEN = getUserConfig($user_id, 'jira_token');
+
+// Fetch all saved issues for this user
+$stmt = $mysqli->prepare("SELECT id, keyname FROM saved_issues WHERE user_id = ?");
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$res = $stmt->get_result();
 $savedIssues = [];
 while ($row = $res->fetch_assoc()) {
     $savedIssues[] = $row;
 }
-$res->close();
+$stmt->close();
 $mysqli->close();
 
 // Fetch JIRA details for each issue

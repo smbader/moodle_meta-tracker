@@ -1,5 +1,10 @@
 <?php
 require_once __DIR__ . '/config.php';
+session_start();
+if (!isset($_SESSION['user_id'])) {
+    header('Location: login.php');
+    exit();
+}
 $pageTitle = "Coworkers Management";
 require_once __DIR__ . '/template/header.php';
 
@@ -11,14 +16,16 @@ if ($mysqli->connect_errno) {
     exit();
 }
 
+$user_id = $_SESSION['user_id'];
+
 // Handle add coworker
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add'])) {
     $fullname = trim($_POST['fullname'] ?? '');
     $email = trim($_POST['email'] ?? '');
     $github_handle = trim($_POST['github_handle'] ?? '');
     if ($fullname && $email && $github_handle) {
-        $stmt = $mysqli->prepare("INSERT INTO coworkers (fullname, email, github_handle) VALUES (?, ?, ?)");
-        $stmt->bind_param("sss", $fullname, $email, $github_handle);
+        $stmt = $mysqli->prepare("INSERT INTO coworkers (user_id, fullname, email, github_handle) VALUES (?, ?, ?, ?)");
+        $stmt->bind_param("isss", $user_id, $fullname, $email, $github_handle);
         $stmt->execute();
         $stmt->close();
     }
@@ -27,21 +34,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add'])) {
 // Handle remove coworker
 if (isset($_POST['remove_id'])) {
     $remove_id = intval($_POST['remove_id']);
-    $stmt = $mysqli->prepare("DELETE FROM coworkers WHERE id = ?");
-    $stmt->bind_param("i", $remove_id);
+    $stmt = $mysqli->prepare("DELETE FROM coworkers WHERE id = ? AND user_id = ?");
+    $stmt->bind_param("ii", $remove_id, $user_id);
     $stmt->execute();
     $stmt->close();
 }
 
-// Fetch all coworkers
+// Fetch all coworkers for this user
 $coworkers = [];
-$res = $mysqli->query("SELECT * FROM coworkers ORDER BY fullname ASC");
-if ($res) {
-    while ($row = $res->fetch_assoc()) {
-        $coworkers[] = $row;
-    }
-    $res->close();
+$stmt = $mysqli->prepare("SELECT * FROM coworkers WHERE user_id = ? ORDER BY fullname ASC");
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$res = $stmt->get_result();
+while ($row = $res->fetch_assoc()) {
+    $coworkers[] = $row;
 }
+$stmt->close();
 $mysqli->close();
 ?>
 <div class="row justify-content-center mb-4">
