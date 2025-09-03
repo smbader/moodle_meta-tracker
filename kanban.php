@@ -12,6 +12,10 @@ if (!isset($_SESSION['user_id'])) {
 $pageTitle = "Kanban Board";
 include __DIR__ . "/template/header.php";
 
+// --- FILTER HANDLING ---
+$activeTag = isset($_GET['tag']) ? trim($_GET['tag']) : null;
+$activeCoworker = isset($_GET['coworker']) ? trim($_GET['coworker']) : null;
+
 function fetchJiraIssue($keyname, $jiraDomain, $jiraEmail, $jiraToken) {
     $url = $jiraDomain . "/rest/api/3/issue/" . urlencode($keyname);
     $ch = curl_init($url);
@@ -155,6 +159,23 @@ foreach ($allIssues as $issue) {
 }
 $mysqli->close();
 
+// --- FILTER ISSUES BY TAG OR COWORKER IF SET ---
+if ($activeTag || $activeCoworker) {
+    $allIssues = array_filter($allIssues, function($issue) use ($activeTag, $activeCoworker, $issueCoworkers) {
+        $match = true;
+        if ($activeTag) {
+            $match = $match && in_array($activeTag, $issue['tags']);
+        }
+        if ($activeCoworker) {
+            $iid = isset($issue['internal_issue_id']) ? $issue['internal_issue_id'] : null;
+            $match = $match && $iid && in_array($activeCoworker, isset($issueCoworkers[$iid]) ? $issueCoworkers[$iid] : []);
+        }
+        return $match;
+    });
+    // Re-index array
+    $allIssues = array_values($allIssues);
+}
+
 // Fetch JIRA details for each merged issue
 foreach ($allIssues as &$issue) {
     $jira = null;
@@ -200,6 +221,20 @@ $laneColors = [
 ];
 ?>
 <h1 class="mb-4">Kanban Board</h1>
+<?php if ($activeTag || $activeCoworker): ?>
+  <div class="mb-3">
+    <span class="badge bg-primary">
+      Filter:
+      <?php if ($activeTag): ?>
+        Tag <strong>#<?= htmlspecialchars($activeTag) ?></strong>
+      <?php endif; ?>
+      <?php if ($activeCoworker): ?>
+        Coworker <strong><?= htmlspecialchars($activeCoworker) ?></strong>
+      <?php endif; ?>
+    </span>
+    <a href="kanban.php" class="badge bg-danger text-light ms-2" style="text-decoration:none;">Clear filter</a>
+  </div>
+<?php endif; ?>
 <div class="kanban-scroll" style="overflow-x:auto; white-space:nowrap; padding-bottom:1em;">
   <div class="d-flex flex-row" style="gap:1.5em;">
     <?php foreach ($columns as $i => $col): ?>
@@ -235,14 +270,14 @@ $laneColors = [
                       <div class="mb-1">
                         <?php if (!empty($issueCoworkers[$issue['internal_issue_id']])): ?>
                           <?php foreach ($issueCoworkers[$issue['internal_issue_id']] as $coworker): ?>
-                            <span class="badge bg-secondary text-light"><?= htmlspecialchars($coworker) ?></span>
+                            <a href="kanban.php?coworker=<?= rawurlencode($coworker) ?>" class="badge bg-secondary text-light" style="text-decoration:none;"><?= htmlspecialchars($coworker) ?></a>
                           <?php endforeach; ?>
                         <?php else: ?>
                           <span class="badge bg-light text-dark">No coworkers</span>
                         <?php endif; ?>
                         <?php if (!empty($issue['tags'])): ?>
                           <?php foreach ($issue['tags'] as $tag): ?>
-                            <span class="badge bg-success ms-1">#<?= htmlspecialchars($tag) ?></span>
+                            <a href="kanban.php?tag=<?= rawurlencode($tag) ?>" class="badge bg-success ms-1" style="text-decoration:none;">#<?= htmlspecialchars($tag) ?></a>
                           <?php endforeach; ?>
                         <?php endif; ?>
                       </div>
