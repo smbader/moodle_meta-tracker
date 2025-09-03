@@ -157,6 +157,45 @@ if ($sourceType === 'jira') {
             $stmt->execute();
             $stmt->close();
         }
+        // TAGS: Handle tag assignment and creation
+        $tag_ids = isset($_POST['tag_ids']) ? array_map('intval', $_POST['tag_ids']) : array();
+        $new_tags = isset($_POST['new_tags']) ? trim($_POST['new_tags']) : '';
+        $new_tag_ids = [];
+        if ($new_tags !== '') {
+            $new_tag_names = array_filter(array_map('trim', explode(',', $new_tags)));
+            foreach ($new_tag_names as $tag_name) {
+                if ($tag_name === '') continue;
+                // Check if tag exists
+                $stmt = $mysqli->prepare('SELECT id FROM tags WHERE user_id = ? AND name = ?');
+                $stmt->bind_param('is', $user_id, $tag_name);
+                $stmt->execute();
+                $stmt->bind_result($tid);
+                if ($stmt->fetch()) {
+                    $new_tag_ids[] = $tid;
+                } else {
+                    $stmt->close();
+                    $stmt = $mysqli->prepare('INSERT INTO tags (user_id, name) VALUES (?, ?)');
+                    $stmt->bind_param('is', $user_id, $tag_name);
+                    $stmt->execute();
+                    $new_tag_ids[] = $stmt->insert_id;
+                }
+                $stmt->close();
+            }
+        }
+        $all_tag_ids = array_unique(array_merge($tag_ids, $new_tag_ids));
+        // Remove all old tags for this issue
+        if ($issue_id) {
+            $stmt = $mysqli->prepare('DELETE FROM issue_tags WHERE issue_id = ?');
+            $stmt->bind_param('i', $issue_id);
+            $stmt->execute();
+            $stmt->close();
+            foreach ($all_tag_ids as $tid) {
+                $stmt = $mysqli->prepare('INSERT INTO issue_tags (issue_id, tag_id) VALUES (?, ?)');
+                $stmt->bind_param('ii', $issue_id, $tid);
+                $stmt->execute();
+                $stmt->close();
+            }
+        }
         $success_msg = 'Internal data saved.';
     }
     // Load internal data
@@ -198,6 +237,27 @@ if ($sourceType === 'jira') {
         $coworkers[] = $row;
     }
     $res->close();
+    // --- TAGS: Load all tags for this user and assigned tags for this issue ---
+    $tags = [];
+    $assigned_tags = [];
+    $stmt = $mysqli->prepare('SELECT * FROM tags WHERE user_id = ? ORDER BY name ASC');
+    $stmt->bind_param('i', $user_id);
+    $stmt->execute();
+    $res = $stmt->get_result();
+    while ($row = $res->fetch_assoc()) {
+        $tags[] = $row;
+    }
+    $stmt->close();
+    if ($issue_id) {
+        $stmt = $mysqli->prepare('SELECT tag_id FROM issue_tags WHERE issue_id = ?');
+        $stmt->bind_param('i', $issue_id);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        while ($row = $res->fetch_assoc()) {
+            $assigned_tags[] = $row['tag_id'];
+        }
+        $stmt->close();
+    }
 } elseif ($sourceType === 'github') {
     // --- New: Extract GitHub repo and issue number from keyname ---
     // keyname format: owner/repo#issue_number
@@ -291,6 +351,45 @@ if ($sourceType === 'jira') {
             $stmt->execute();
             $stmt->close();
         }
+        // TAGS: Handle tag assignment and creation
+        $tag_ids = isset($_POST['tag_ids']) ? array_map('intval', $_POST['tag_ids']) : array();
+        $new_tags = isset($_POST['new_tags']) ? trim($_POST['new_tags']) : '';
+        $new_tag_ids = [];
+        if ($new_tags !== '') {
+            $new_tag_names = array_filter(array_map('trim', explode(',', $new_tags)));
+            foreach ($new_tag_names as $tag_name) {
+                if ($tag_name === '') continue;
+                // Check if tag exists
+                $stmt = $mysqli->prepare('SELECT id FROM tags WHERE user_id = ? AND name = ?');
+                $stmt->bind_param('is', $user_id, $tag_name);
+                $stmt->execute();
+                $stmt->bind_result($tid);
+                if ($stmt->fetch()) {
+                    $new_tag_ids[] = $tid;
+                } else {
+                    $stmt->close();
+                    $stmt = $mysqli->prepare('INSERT INTO tags (user_id, name) VALUES (?, ?)');
+                    $stmt->bind_param('is', $user_id, $tag_name);
+                    $stmt->execute();
+                    $new_tag_ids[] = $stmt->insert_id;
+                }
+                $stmt->close();
+            }
+        }
+        $all_tag_ids = array_unique(array_merge($tag_ids, $new_tag_ids));
+        // Remove all old tags for this issue
+        if ($issue_id) {
+            $stmt = $mysqli->prepare('DELETE FROM issue_tags WHERE issue_id = ?');
+            $stmt->bind_param('i', $issue_id);
+            $stmt->execute();
+            $stmt->close();
+            foreach ($all_tag_ids as $tid) {
+                $stmt = $mysqli->prepare('INSERT INTO issue_tags (issue_id, tag_id) VALUES (?, ?)');
+                $stmt->bind_param('ii', $issue_id, $tid);
+                $stmt->execute();
+                $stmt->close();
+            }
+        }
         $success_msg = 'Internal data saved.';
     }
     // Load internal data
@@ -332,9 +431,28 @@ if ($sourceType === 'jira') {
         $coworkers[] = $row;
     }
     $res->close();
-    // Display GitHub issue details (do not exit, let the shared form render below)
-    $githubUrl = 'https://github.com/' . $githubRepo . '/issues/' . $githubIssueNumber;
-}
+    // --- TAGS: Load all tags for this user and assigned tags for this issue ---
+    $tags = [];
+    $assigned_tags = [];
+    $stmt = $mysqli->prepare('SELECT * FROM tags WHERE user_id = ? ORDER BY name ASC');
+    $stmt->bind_param('i', $user_id);
+    $stmt->execute();
+    $res = $stmt->get_result();
+    while ($row = $res->fetch_assoc()) {
+        $tags[] = $row;
+    }
+    $stmt->close();
+    if ($issue_id) {
+        $stmt = $mysqli->prepare('SELECT tag_id FROM issue_tags WHERE issue_id = ?');
+        $stmt->bind_param('i', $issue_id);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        while ($row = $res->fetch_assoc()) {
+            $assigned_tags[] = $row['tag_id'];
+        }
+        $stmt->close();
+    }
+} // End of issue source type handling
 ?>
 <div class="container mt-4">
   <div class="row">
@@ -383,11 +501,32 @@ if ($sourceType === 'jira') {
           </select>
         </div>
         <div class="mb-3">
+          <label for="tag_ids" class="form-label">Tags</label>
+          <select name="tag_ids[]" id="tag_ids" class="form-select" multiple>
+            <?php foreach ($tags as $tag): ?>
+              <option value="<?= $tag['id'] ?>" <?= in_array($tag['id'], $assigned_tags) ? 'selected' : '' ?>><?= htmlspecialchars($tag['name']) ?></option>
+            <?php endforeach; ?>
+          </select>
+          <small class="form-text text-muted">Hold Ctrl/Cmd to select multiple. Assigned tags will be shown below.</small>
+        </div>
+        <div class="mb-3">
+          <label for="new_tags" class="form-label">Add New Tags</label>
+          <input type="text" name="new_tags" id="new_tags" class="form-control" placeholder="Comma-separated (e.g. urgent, backend)" />
+        </div>
+        <div class="mb-3">
           <label for="notes" class="form-label">Notes</label>
           <textarea name="notes" id="notes" class="form-control" rows="4"><?= htmlspecialchars($notes_val) ?></textarea>
         </div>
         <button type="submit" name="internal_save" class="btn btn-primary">Save Internal Data</button>
       </form>
+      <?php if (!empty($assigned_tags) && !empty($tags)): ?>
+        <div class="mb-3">
+          <strong>Assigned Tags:</strong>
+          <?php foreach ($tags as $tag): if (in_array($tag['id'], $assigned_tags)): ?>
+            <span class="badge bg-success"><?= htmlspecialchars($tag['name']) ?></span>
+          <?php endif; endforeach; ?>
+        </div>
+      <?php endif; ?>
     </div>
   </div>
 </div>

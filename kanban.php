@@ -106,6 +106,36 @@ foreach ($savedIssues as $keyname => $saved) {
 }
 $mysqli->close();
 
+// --- TAG FETCH: Attach tags to all issues ---
+// Collect all internal_issue_ids (non-null)
+$internalIssueIds = array();
+foreach ($allIssues as $issue) {
+    if (!empty($issue['internal_issue_id'])) {
+        $internalIssueIds[] = (int)$issue['internal_issue_id'];
+    }
+}
+$internalIssueIds = array_unique($internalIssueIds);
+$issueTagsMap = array(); // internal_issue_id => [tag1, tag2, ...]
+if (!empty($internalIssueIds)) {
+    $mysqli = new mysqli($DB_HOST, $DB_USER, $DB_PASS, $DB_NAME, $DB_PORT);
+    $idsStr = implode(',', $internalIssueIds);
+    $sql = "SELECT it.issue_id, t.name FROM issue_tags it JOIN tags t ON it.tag_id = t.id WHERE it.issue_id IN ($idsStr) ORDER BY t.name ASC";
+    $res = $mysqli->query($sql);
+    while ($row = $res->fetch_assoc()) {
+        $iid = (int)$row['issue_id'];
+        if (!isset($issueTagsMap[$iid])) $issueTagsMap[$iid] = array();
+        $issueTagsMap[$iid][] = $row['name'];
+    }
+    $res->close();
+    $mysqli->close();
+}
+// Attach tags to each issue
+foreach ($allIssues as &$issue) {
+    $iid = !empty($issue['internal_issue_id']) ? (int)$issue['internal_issue_id'] : null;
+    $issue['tags'] = ($iid && isset($issueTagsMap[$iid])) ? $issueTagsMap[$iid] : array();
+}
+unset($issue);
+
 // Fetch coworkers for each merged issue (if internal_issue_id exists)
 $issueCoworkers = [];
 $mysqli = new mysqli($DB_HOST, $DB_USER, $DB_PASS, $DB_NAME, $DB_PORT);
@@ -209,6 +239,11 @@ $laneColors = [
                           <?php endforeach; ?>
                         <?php else: ?>
                           <span class="badge bg-light text-dark">No coworkers</span>
+                        <?php endif; ?>
+                        <?php if (!empty($issue['tags'])): ?>
+                          <?php foreach ($issue['tags'] as $tag): ?>
+                            <span class="badge bg-success ms-1">#<?= htmlspecialchars($tag) ?></span>
+                          <?php endforeach; ?>
                         <?php endif; ?>
                       </div>
                       <?php if (!empty($issue['notes'])): ?>

@@ -65,4 +65,23 @@
       <column name="name" />
     </unique>
   </table>
+  <!-- New tables for tag support -->
+  <table name="tags">
+    <column name="id" type="INT" autoincrement="true" primary="true" />
+    <column name="user_id" type="INT" notnull="true" />
+    <column name="name" type="VARCHAR(64)" notnull="true" />
+    <unique name="user_tag_unique">
+      <column name="user_id" />
+      <column name="name" />
+    </unique>
+  </table>
+  <table name="issue_tags">
+    <column name="id" type="INT" autoincrement="true" primary="true" />
+    <column name="issue_id" type="INT" notnull="true" />
+    <column name="tag_id" type="INT" notnull="true" />
+    <unique name="issue_tag_unique">
+      <column name="issue_id" />
+      <column name="tag_id" />
+    </unique>
+  </table>
 </database>
