@@ -7,5 +7,4 @@ default:
   extensions:
     Behat\Gherkin\Extension: ~
   autoload:
-    '': %paths.base%/features/bootstrap
-
+    '': "%paths.base%/features/bootstrap"
