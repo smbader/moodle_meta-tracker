@@ -1,0 +1,67 @@
+name: LAMP Behat CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  lamp-behat:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:5.7
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: test_db
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent" --health-interval=10s --health-timeout=5s --health-retries=5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          extensions: mbstring, pdo, pdo_mysql, intl, xml, curl, json
+
+      - name: Install Apache
+        run: sudo apt-get update && sudo apt-get install -y apache2 libapache2-mod-php8.1
+
+      - name: Start Apache
+        run: sudo service apache2 start
+
+      - name: Install Composer
+        run: |
+          php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
+          php composer-setup.php --install-dir=/usr/local/bin --filename=composer
+
+      - name: Install Behat dependencies
+        working-directory: ./behat
+        run: composer install
+
+      - name: Configure Apache DocumentRoot
+        run: |
+          sudo sed -i 's#DocumentRoot /var/www/html#DocumentRoot /home/runner/work/docker-compose-lamp/docker-compose-lamp/www#' /etc/apache2/sites-available/000-default.conf
+          sudo systemctl reload apache2
+
+      - name: Wait for MySQL
+        run: |
+          for i in {1..30}; do
+            if mysqladmin ping -h 127.0.0.1 -uroot -proot --silent; then
+              break
+            fi
+            sleep 2
+          done
+
+      - name: Create test database and user
+        run: |
+          mysql -h 127.0.0.1 -uroot -proot -e "CREATE DATABASE IF NOT EXISTS test_db;"
+
+      - name: Run Behat tests
+        working-directory: ./behat
+        run: ./vendor/bin/behat --colors
