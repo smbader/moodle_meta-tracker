@@ -15,59 +15,85 @@ $github_token = getUserConfig($user_id, 'github_token');
 
 $success_msg = '';
 $error_msg = '';
+$github_issues = [];
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['github_issue_link'])) {
-    $link = trim($_POST['github_issue_link']);
-    // Validate link format
-    if (!preg_match('#^https://github.com/([\w\-\.]+)/([\w\-\.]+)/issues/(\d+)$#', $link, $matches)) {
-        $error_msg = 'Invalid GitHub issue link format. Please use the format: https://github.com/owner/repo/issues/123';
-    } elseif (!$github_username || !$github_token) {
+// Handle saving selected issues from the grid
+if (
+    $_SERVER['REQUEST_METHOD'] === 'POST' &&
+    isset($_POST['save_selected_issues']) &&
+    isset($_POST['selected_issues']) &&
+    is_array($_POST['selected_issues'])
+) {
+    if (!$github_username || !$github_token) {
         $error_msg = 'GitHub credentials are not set. Please set them in your credentials.';
     } else {
-        $owner = $matches[1];
-        $repo = $matches[2];
-        $issue_number = $matches[3];
-        $keyname = $owner . '/' . $repo . '#' . $issue_number;
-        $api_url = "https://api.github.com/repos/$owner/$repo/issues/$issue_number";
-        $ch = curl_init($api_url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'User-Agent: META-Tracker',
-            'Accept: application/vnd.github+json',
-            'X-GitHub-Api-Version: 2022-11-28',
-            'Authorization: Bearer ' . $github_token
-        ]);
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-        if ($httpCode !== 200 || !$response) {
-            $error_detail = htmlspecialchars($response);
-            $error_msg = "Unable to access GitHub issue. <br>API URL: <code>$api_url</code><br>HTTP Code: $httpCode<br>Response: <code>$error_detail</code><br>Check that the link is correct, the issue exists, and your token has access.";
+        $mysqli = new mysqli($DB_HOST, $DB_USER, $DB_PASS, $DB_NAME, $DB_PORT);
+        if ($mysqli->connect_errno) {
+            $error_msg = 'Database connection error.';
         } else {
-            $data = json_decode($response, true);
-            if (!$data || !isset($data['title'], $data['user']['login'], $data['state'])) {
-                $error_msg = 'Could not parse GitHub issue data.';
-            } else {
-                $title = $data['title'];
-                $reporter = $data['user']['login'];
-                $status = $data['state'];
-                // Save to DB
-                $mysqli = new mysqli($DB_HOST, $DB_USER, $DB_PASS, $DB_NAME, $DB_PORT);
-                if ($mysqli->connect_errno) {
-                    $error_msg = 'Database connection error.';
-                } else {
-                    $stmt = $mysqli->prepare("INSERT INTO saved_issues (user_id, keyname, source_type, title, reporter, status) VALUES (?, ?, 'github', ?, ?, ?)");
-                    $stmt->bind_param("issss", $user_id, $keyname, $title, $reporter, $status);
-                    if ($stmt->execute()) {
-                        $success_msg = 'GitHub issue saved successfully.';
-                    } else {
-                        $error_msg = 'Failed to save issue: ' . htmlspecialchars($stmt->error);
-                    }
+            $saved_count = 0;
+            foreach ($_POST['selected_issues'] as $issue_json) {
+                $issue = json_decode($issue_json, true);
+                if (!$issue || !isset($issue['keyname'], $issue['title'], $issue['reporter'], $issue['status'])) continue;
+                // Check if already saved
+                $stmt = $mysqli->prepare("SELECT id FROM saved_issues WHERE user_id = ? AND keyname = ? AND source_type = 'github'");
+                $stmt->bind_param("is", $user_id, $issue['keyname']);
+                $stmt->execute();
+                $stmt->store_result();
+                if ($stmt->num_rows === 0) {
                     $stmt->close();
-                    $mysqli->close();
+                    $stmt2 = $mysqli->prepare("INSERT INTO saved_issues (user_id, keyname, source_type, title, reporter, status) VALUES (?, ?, 'github', ?, ?, ?)");
+                    $stmt2->bind_param("issss", $user_id, $issue['keyname'], $issue['title'], $issue['reporter'], $issue['status']);
+                    if ($stmt2->execute()) {
+                        $saved_count++;
+                    }
+                    $stmt2->close();
+                } else {
+                    $stmt->close();
                 }
             }
+            $mysqli->close();
+            if ($saved_count > 0) {
+                $success_msg = "$saved_count GitHub issue(s) saved successfully.";
+            } else {
+                $error_msg = 'No new issues were saved (they may already be saved).';
+            }
         }
+    }
+}
+
+// Fetch visible GitHub issues for the user (first 30)
+if ($github_username && $github_token) {
+    $api_url = 'https://api.github.com/issues?per_page=30';
+    $ch = curl_init($api_url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'User-Agent: META-Tracker',
+        'Accept: application/vnd.github+json',
+        'X-GitHub-Api-Version: 2022-11-28',
+        'Authorization: Bearer ' . $github_token
+    ]);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    if ($httpCode === 200 && $response) {
+        $data = json_decode($response, true);
+        if (is_array($data)) {
+            foreach ($data as $issue) {
+                if (!isset($issue['title'], $issue['user']['login'], $issue['created_at'], $issue['number'], $issue['repository']['full_name'])) continue;
+                $keyname = $issue['repository']['full_name'] . '#' . $issue['number'];
+                $github_issues[] = [
+                    'keyname' => $keyname,
+                    'title' => $issue['title'],
+                    'reporter' => $issue['user']['login'],
+                    'status' => $issue['state'],
+                    'created_at' => $issue['created_at'],
+                    'url' => $issue['html_url'],
+                ];
+            }
+        }
+    } else {
+        $error_msg = 'Could not fetch GitHub issues. Check your token and permissions.';
     }
 }
 ?>
@@ -85,5 +111,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['github_issue_link']))
     </div>
     <button type="submit" class="btn btn-primary">Add Issue</button>
   </form>
+
+  <?php if ($github_issues): ?>
+    <h3>All Visible GitHub Issues</h3>
+    <form method="post">
+      <input type="hidden" name="save_selected_issues" value="1">
+      <table class="table table-bordered table-striped">
+        <thead>
+          <tr>
+            <th scope="col"><input type="checkbox" id="select_all"></th>
+            <th scope="col">Title</th>
+            <th scope="col">Author</th>
+            <th scope="col">Submit Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          <?php foreach ($github_issues as $issue): ?>
+            <tr>
+              <td><input type="checkbox" name="selected_issues[]" value='<?php echo htmlspecialchars(json_encode($issue), ENT_QUOTES, 'UTF-8'); ?>'></td>
+              <td><a href="<?php echo htmlspecialchars($issue['url']); ?>" target="_blank"><?php echo htmlspecialchars($issue['title']); ?></a></td>
+              <td><?php echo htmlspecialchars($issue['reporter']); ?></td>
+              <td><?php echo htmlspecialchars(date('Y-m-d H:i', strtotime($issue['created_at']))); ?></td>
+            </tr>
+          <?php endforeach; ?>
+        </tbody>
+      </table>
+      <button type="submit" class="btn btn-success">Save Selected Issues</button>
+    </form>
+    <script>
+      // Select/Deselect all checkboxes
+      document.addEventListener('DOMContentLoaded', function() {
+        var selectAll = document.getElementById('select_all');
+        if (selectAll) {
+          selectAll.addEventListener('change', function() {
+            var checkboxes = document.querySelectorAll('input[name="selected_issues[]"]');
+            for (var i = 0; i < checkboxes.length; i++) {
+              checkboxes[i].checked = selectAll.checked;
+            }
+          });
+        }
+      });
+    </script>
+  <?php endif; ?>
 </div>
 <?php require_once __DIR__ . '/template/footer.php'; ?>

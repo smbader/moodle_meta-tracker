@@ -133,7 +133,6 @@ if ($sourceType === 'jira') {
         $stmt->bind_result($issue_id);
         $found = $stmt->fetch();
         $stmt->close();
-        echo 'Here is the current issue id ' . $issue_id;
         if ($found) {
             $stmt = $mysqli->prepare('UPDATE issues SET internal_status_id = ?, notes = ? WHERE id = ?');
             $stmt->bind_param('isi', $internal_status_id, $notes, $issue_id);
@@ -327,7 +326,6 @@ if ($sourceType === 'jira') {
         $stmt->bind_result($issue_id);
         $found = $stmt->fetch();
         $stmt->close();
-        echo 'Here is the current issue id ' . $issue_id;
         if ($found) {
             $stmt = $mysqli->prepare('UPDATE issues SET internal_status_id = ?, notes = ? WHERE id = ?');
             $stmt->bind_param('isi', $internal_status_id, $notes, $issue_id);
