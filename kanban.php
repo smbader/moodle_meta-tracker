@@ -98,11 +98,12 @@ $statuses = array_keys($statuses);
             <div class="card mb-2 shadow-sm" style="font-size:0.95em;">
               <div class="card-body p-2">
                 <h6 class="card-title mb-1" style="font-size:1em; word-break:break-word; white-space:normal;">
-                  #<?= $issue['id'] ?>: <?= htmlspecialchars($issue['summary']) ?>
+                  <a href="view.php?key=<?= rawurlencode($issue['keyname']) ?>" style="text-decoration:none; font-weight:bold; color:inherit;">
+                    <?= htmlspecialchars($issue['keyname']) ?>
+                  </a>: <?= htmlspecialchars($issue['summary']) ?>
                 </h6>
                 <div class="mb-1">
                   <span class="badge bg-info text-dark">Status: <?= htmlspecialchars($issue['status']) ?></span>
-                  <span class="badge bg-secondary">Key: <?= htmlspecialchars($issue['keyname']) ?></span>
                 </div>
                 <div class="mb-1">
                   <span class="badge bg-light text-dark">Assignee: <?= htmlspecialchars($issue['assignee']) ?></span>

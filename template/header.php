@@ -30,6 +30,7 @@
           <ul class="dropdown-menu" aria-labelledby="managementDropdown">
             <li><a class="dropdown-item" href="/coworkers.php">Coworker</a></li>
             <li><a class="dropdown-item" href="/credentials.php">Credentials</a></li>
+            <li><a class="dropdown-item" href="/internal_settings.php">Internal Settings</a></li>
           </ul>
         </li>
         <?php if (isset($_SESSION['user_id'])): ?>

@@ -31,4 +31,34 @@
       <column name="name" />
     </unique>
   </table>
+  <!-- New table for local issue tracking -->
+  <table name="issues">
+    <column name="id" type="INT" autoincrement="true" primary="true" />
+    <column name="jira_key" type="VARCHAR(64)" notnull="true" unique="true" />
+    <column name="title" type="VARCHAR(255)" />
+    <column name="desc" type="TEXT" />
+    <column name="internal_status_id" type="INT" />
+    <column name="notes" type="TEXT" />
+  </table>
+  <!-- Many-to-many relationship between issues and coworkers -->
+  <table name="issue_coworkers">
+    <column name="id" type="INT" autoincrement="true" primary="true" />
+    <column name="issue_id" type="INT" notnull="true" />
+    <column name="coworker_id" type="INT" notnull="true" />
+    <unique name="issue_coworker_unique">
+      <column name="issue_id" />
+      <column name="coworker_id" />
+    </unique>
+  </table>
+  <!-- Internal statuses table -->
+  <table name="statuses">
+    <column name="id" type="INT" autoincrement="true" primary="true" />
+    <column name="user_id" type="INT" notnull="true" />
+    <column name="name" type="VARCHAR(64)" notnull="true" />
+    <column name="sort_order" type="INT" notnull="true" />
+    <unique name="user_status_unique">
+      <column name="user_id" />
+      <column name="name" />
+    </unique>
+  </table>
 </database>
