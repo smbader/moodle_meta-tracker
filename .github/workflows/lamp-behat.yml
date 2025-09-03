@@ -62,6 +62,43 @@ jobs:
         run: |
           mysql -h 127.0.0.1 -uroot -proot -e "CREATE DATABASE IF NOT EXISTS test_db;"
 
+      - name: Create config.php for tests
+        run: |
+          cat <<'EOL' > ./config.php
+          <?php
+          // config.php
+          // Database connection info
+          $DB_HOST = getenv('DB_HOST') ?: 'database';
+          $DB_PORT = getenv('DB_PORT') ?: 3306;
+          $DB_USER = getenv('DB_USER') ?: 'docker';
+          $DB_PASS = getenv('DB_PASS') ?: 'docker';
+          $DB_NAME = getenv('DB_NAME') ?: 'docker';
+          function getPDO()
+          {
+              global $DB_HOST, $DB_PORT, $DB_USER, $DB_PASS, $DB_NAME;
+              $dsn = "mysql:host=$DB_HOST;port=$DB_PORT;dbname=$DB_NAME;charset=utf8mb4";
+              return new PDO($dsn, $DB_USER, $DB_PASS, [
+                  PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                  PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+              ]);
+          }
+          function getUserConfig($user_id, $name)
+          {
+              $pdo = getPDO();
+              $stmt = $pdo->prepare('SELECT value FROM config WHERE user_id = ? AND name = ? LIMIT 1');
+              $stmt->execute([$user_id, $name]);
+              $row = $stmt->fetch();
+              return $row ? $row['value'] : null;
+          }
+          EOL
+        working-directory: ./
+
       - name: Run Behat tests
         working-directory: ./behat
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_USER: root
+          DB_PASS: root
+          DB_NAME: test_db
         run: ./vendor/bin/behat --colors
