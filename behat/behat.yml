@@ -4,7 +4,5 @@ default:
       contexts:
         - App\Behat\FeatureContext
       paths: [ "%paths.base%/features" ]
-  extensions:
-    Behat\Gherkin\Extension: ~
   autoload:
     '': "%paths.base%/features/bootstrap"
