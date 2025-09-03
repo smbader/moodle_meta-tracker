@@ -181,7 +181,7 @@ $res->close();
         <?= htmlspecialchars($title) ?>
       </h2>
       <div class="mb-3"><strong>Status:</strong> <?= htmlspecialchars($status) ?></div>
-      <div class="mb-3"><strong>Owner:</strong> <?= htmlspecialchars($owner) ?></div>
+      <div class="mb-3"><strong>Assignee:</strong> <?= htmlspecialchars($owner) ?></div>
       <div class="mb-3"><strong>Description:</strong><br><?= nl2br(htmlspecialchars($desc)) ?></div>
       <?php if ($githubUrl): ?>
         <div class="mb-3"><strong>GitHub:</strong> <a href="<?= htmlspecialchars($githubUrl) ?>" target="_blank">View on GitHub</a></div>

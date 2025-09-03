@@ -35,16 +35,6 @@ function fetchJiraIssue($keyname, $jiraDomain, $jiraEmail, $jiraToken) {
     ];
 }
 
-// Ensure config variables are available
-$DB_HOST = isset($DB_HOST) ? $DB_HOST : 'localhost';
-$DB_PORT = isset($DB_PORT) ? $DB_PORT : 3306;
-$DB_USER = isset($DB_USER) ? $DB_USER : 'root';
-$DB_PASS = isset($DB_PASS) ? $DB_PASS : '';
-$DB_NAME = isset($DB_NAME) ? $DB_NAME : '';
-$JIRA_DOMAIN = isset($JIRA_DOMAIN) ? $JIRA_DOMAIN : '';
-$JIRA_EMAIL = isset($JIRA_EMAIL) ? $JIRA_EMAIL : '';
-$JIRA_API_TOKEN = isset($JIRA_API_TOKEN) ? $JIRA_API_TOKEN : '';
-
 $mysqli = new mysqli($DB_HOST, $DB_USER, $DB_PASS, $DB_NAME, $DB_PORT);
 if ($mysqli->connect_errno) {
     echo "<div class='alert alert-danger'>Failed to connect to MySQL: " . $mysqli->connect_error . "</div>";
@@ -53,69 +43,183 @@ if ($mysqli->connect_errno) {
 }
 
 $user_id = $_SESSION['user_id'];
-// Fetch user-specific JIRA credentials
 $JIRA_DOMAIN = getUserConfig($user_id, 'jira_domain');
 $JIRA_EMAIL = getUserConfig($user_id, 'jira_email');
 $JIRA_API_TOKEN = getUserConfig($user_id, 'jira_token');
 
-// Fetch all saved issues for this user
-$stmt = $mysqli->prepare("SELECT id, keyname FROM saved_issues WHERE user_id = ?");
+// Fetch all internal statuses for this user
+$statuses = [];
+$stmt = $mysqli->prepare("SELECT id, name FROM statuses WHERE user_id = ? ORDER BY sort_order ASC");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $res = $stmt->get_result();
-$savedIssues = [];
 while ($row = $res->fetch_assoc()) {
-    $savedIssues[] = $row;
+    $statuses[] = $row;
+}
+$stmt->close();
+
+// Add a pseudo-status for issues with no internal status as the first column
+$noStatusId = 'none';
+$columns = array_merge([
+    ['id' => $noStatusId, 'name' => 'No Internal Status']
+], $statuses);
+
+// Fetch all issues for this user (with or without internal status)
+$stmt = $mysqli->prepare("SELECT * FROM issues WHERE internal_status_id IN (SELECT id FROM statuses WHERE user_id = ?) OR internal_status_id IS NULL");
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$res = $stmt->get_result();
+$allIssues = [];
+while ($row = $res->fetch_assoc()) {
+    $allIssues[] = $row;
+}
+$stmt->close();
+
+// Fetch coworkers for each issue
+$issueCoworkers = [];
+foreach ($allIssues as $issue) {
+    $issue_id = $issue['id'];
+    $issueCoworkers[$issue_id] = [];
+    if (!empty($issue_id)) {
+        $stmt = $mysqli->prepare("SELECT c.fullname FROM issue_coworkers ic JOIN coworkers c ON ic.coworker_id = c.id WHERE ic.issue_id = ?");
+        $stmt->bind_param("i", $issue_id);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        while ($row = $res->fetch_assoc()) {
+            $issueCoworkers[$issue_id][] = $row['fullname'];
+        }
+        $stmt->close();
+    }
+}
+$mysqli->close();
+
+// Fetch JIRA details for each issue
+foreach ($allIssues as &$issue) {
+    $jira = null;
+    if (!empty($issue['jira_key'])) {
+        $jira = fetchJiraIssue($issue['jira_key'], $JIRA_DOMAIN, $JIRA_EMAIL, $JIRA_API_TOKEN);
+    }
+    $issue['jira_summary'] = isset($jira['summary']) ? $jira['summary'] : (isset($issue['title']) ? $issue['title'] : '[No summary]');
+    $issue['jira_status'] = isset($jira['status']) ? $jira['status'] : '[No JIRA Status]';
+    $issue['jira_updated'] = isset($jira['updated']) ? $jira['updated'] : '';
+    $issue['jira_assignee'] = isset($jira['assignee']) ? $jira['assignee'] : '[No assignee]';
+}
+unset($issue);
+
+// Build a set of valid status IDs for the user
+$validStatusIds = array_map(function($s) { return $s['id']; }, $statuses);
+
+// Organize issues by column (internal status), then by swim lane (JIRA status)
+$issuesByColumnAndLane = [];
+foreach ($columns as $col) {
+    $issuesByColumnAndLane[$col['id']] = [];
+}
+foreach ($allIssues as $issue) {
+    $colId = isset($issue['internal_status_id']) ? $issue['internal_status_id'] : $noStatusId;
+    if (empty($issue['internal_status_id']) || !in_array($issue['internal_status_id'], $validStatusIds)) {
+        $colId = $noStatusId;
+    }
+    $lane = isset($issue['jira_status']) ? $issue['jira_status'] : '[No JIRA Status]';
+    if (!isset($issuesByColumnAndLane[$colId][$lane])) {
+        $issuesByColumnAndLane[$colId][$lane] = [];
+    }
+    $issuesByColumnAndLane[$colId][$lane][] = $issue;
+}
+
+// --- Add saved_issues that are not in issues ---
+$mysqli = new mysqli($DB_HOST, $DB_USER, $DB_PASS, $DB_NAME, $DB_PORT);
+$savedJiraKeys = [];
+$stmt = $mysqli->prepare("SELECT keyname FROM saved_issues WHERE user_id = ?");
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$res = $stmt->get_result();
+while ($row = $res->fetch_assoc()) {
+    $savedJiraKeys[] = $row['keyname'];
 }
 $stmt->close();
 $mysqli->close();
 
-// Fetch JIRA details for each issue
-$issues = [];
-$statuses = [];
-foreach ($savedIssues as $issue) {
-    $jira = fetchJiraIssue($issue['keyname'], $JIRA_DOMAIN, $JIRA_EMAIL, $JIRA_API_TOKEN);
-    if ($jira) {
-        $jira['id'] = $issue['id'];
-        $issues[] = $jira;
-        $statuses[$jira['status']] = true;
-    }
-}
-$statuses = array_keys($statuses);
+// Get all jira_keys from issues
+$existingJiraKeys = array_map(function($issue) {
+    return $issue['jira_key'];
+}, $allIssues);
 
+// Find saved_issues not in issues
+$untrackedJiraKeys = array_diff($savedJiraKeys, $existingJiraKeys);
+foreach ($untrackedJiraKeys as $keyname) {
+    $jira = fetchJiraIssue($keyname, $JIRA_DOMAIN, $JIRA_EMAIL, $JIRA_API_TOKEN);
+    $pseudoIssue = [
+        'jira_key' => $keyname,
+        'jira_summary' => isset($jira['summary']) ? $jira['summary'] : '[No summary]',
+        'jira_status' => isset($jira['status']) ? $jira['status'] : '[No JIRA Status]',
+        'jira_updated' => isset($jira['updated']) ? $jira['updated'] : '',
+        'jira_assignee' => isset($jira['assignee']) ? $jira['assignee'] : '[No assignee]',
+        'notes' => 'Not tracked locally',
+        'id' => 'saved_' . $keyname // unique pseudo-id
+    ];
+    $lane = $pseudoIssue['jira_status'];
+    if (!isset($issuesByColumnAndLane[$noStatusId][$lane])) {
+        $issuesByColumnAndLane[$noStatusId][$lane] = [];
+    }
+    $issuesByColumnAndLane[$noStatusId][$lane][] = $pseudoIssue;
+}
+
+// Color palette for columns
+$laneColors = [
+    'bg-primary', 'bg-success', 'bg-warning', 'bg-info', 'bg-secondary', 'bg-dark', 'bg-light text-dark'
+];
 ?>
 <h1 class="mb-4">Kanban Board</h1>
-<div class="row" style="overflow-x:auto; white-space:nowrap;">
-<?php foreach ($statuses as $status): ?>
-  <div class="col" style="min-width:300px; display:inline-block; vertical-align:top;">
-    <div class="card mb-3">
-      <div class="card-header bg-secondary text-white text-center">
-        <strong><?= htmlspecialchars($status) ?></strong>
-      </div>
-      <div class="card-body" style="background:#f8f9fa; min-height:200px;">
-        <?php foreach ($issues as $issue): ?>
-          <?php if ($issue['status'] === $status): ?>
-            <div class="card mb-2 shadow-sm" style="font-size:0.95em;">
-              <div class="card-body p-2">
-                <h6 class="card-title mb-1" style="font-size:1em; word-break:break-word; white-space:normal;">
-                  <a href="view.php?key=<?= rawurlencode($issue['keyname']) ?>" style="text-decoration:none; font-weight:bold; color:inherit;">
-                    <?= htmlspecialchars($issue['keyname']) ?>
-                  </a>: <?= htmlspecialchars($issue['summary']) ?>
-                </h6>
-                <div class="mb-1">
-                  <span class="badge bg-info text-dark">Status: <?= htmlspecialchars($issue['status']) ?></span>
+<div class="kanban-scroll" style="overflow-x:auto; white-space:nowrap; padding-bottom:1em;">
+  <div class="d-flex flex-row" style="gap:1.5em;">
+    <?php foreach ($columns as $i => $col): ?>
+      <div class="kanban-col card mb-3" style="min-width:340px; display:inline-block; vertical-align:top;">
+        <div class="card-header text-white text-center <?= $laneColors[$i % count($laneColors)] ?>">
+          <strong><?= htmlspecialchars($col['name']) ?></strong>
+        </div>
+        <div class="card-body" style="background:#f8f9fa; min-height:220px;">
+          <?php if (!empty($issuesByColumnAndLane[$col['id']])): ?>
+            <?php foreach ($issuesByColumnAndLane[$col['id']] as $jiraStatus => $laneIssues): ?>
+              <div class="mb-3">
+                <div class="swimlane-header mb-2" style="font-weight:bold; color:#333; background:#e9ecef; padding:0.25em 0.5em; border-radius:4px;">
+                  <?= htmlspecialchars($jiraStatus) ?>
                 </div>
-                <div class="mb-1">
-                  <span class="badge bg-light text-dark">Assignee: <?= htmlspecialchars($issue['assignee']) ?></span>
-                </div>
-                <div class="text-muted" style="font-size:0.85em;">Last updated: <?= $issue['updated'] ? date('Y-m-d H:i', strtotime($issue['updated'])) : 'N/A' ?></div>
+                <?php foreach ($laneIssues as $issue): ?>
+                  <div class="card mb-2 shadow-sm" style="font-size:0.97em;">
+                    <div class="card-body p-2">
+                      <h6 class="card-title mb-1" style="font-size:1em; word-break:break-word; white-space:normal;">
+                        <a href="view.php?key=<?= rawurlencode(isset($issue['jira_key']) ? $issue['jira_key'] : '') ?>" style="text-decoration:none; font-weight:bold; color:inherit;">
+                          <?= htmlspecialchars(isset($issue['jira_key']) ? $issue['jira_key'] : '[No JIRA key]') ?>
+                        </a>: <?= htmlspecialchars(isset($issue['jira_summary']) ? $issue['jira_summary'] : '[No summary]') ?>
+                      </h6>
+                      <div class="mb-1">
+                        <span class="badge bg-info text-dark">JIRA Status: <?= htmlspecialchars(isset($issue['jira_status']) ? $issue['jira_status'] : '[No JIRA Status]') ?></span>
+                        <span class="badge bg-light text-dark">Assignee: <?= htmlspecialchars(isset($issue['jira_assignee']) ? $issue['jira_assignee'] : '[No assignee]') ?></span>
+                      </div>
+                      <div class="mb-1">
+                        <?php if (!empty($issueCoworkers[$issue['id']])): ?>
+                          <?php foreach ($issueCoworkers[$issue['id']] as $coworker): ?>
+                            <span class="badge bg-secondary text-light"><?= htmlspecialchars($coworker) ?></span>
+                          <?php endforeach; ?>
+                        <?php else: ?>
+                          <span class="badge bg-light text-dark">No coworkers</span>
+                        <?php endif; ?>
+                      </div>
+                      <?php if (!empty($issue['notes'])): ?>
+                        <div class="mb-1"><span class="badge bg-warning text-dark">Notes</span> <?= nl2br(htmlspecialchars($issue['notes'])) ?></div>
+                      <?php endif; ?>
+                      <div class="text-muted" style="font-size:0.85em;">Last updated: <?= !empty($issue['jira_updated']) ? date('Y-m-d H:i', strtotime($issue['jira_updated'])) : 'N/A' ?></div>
+                    </div>
+                  </div>
+                <?php endforeach; ?>
               </div>
-            </div>
+            <?php endforeach; ?>
+          <?php else: ?>
+            <div class="text-muted text-center" style="margin-top:2em;">No issues in this column.</div>
           <?php endif; ?>
-        <?php endforeach; ?>
+        </div>
       </div>
-    </div>
+    <?php endforeach; ?>
   </div>
-<?php endforeach; ?>
 </div>
 <?php include __DIR__ . "/template/footer.php"; ?>
