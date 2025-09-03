@@ -2,11 +2,11 @@
 // config.php
 
 // Database connection info
-$DB_HOST = "database";
+$DB_HOST = "";
 $DB_PORT = 3306;
-$DB_USER = "docker";
-$DB_PASS = "docker";
-$DB_NAME = "docker";
+$DB_USER = "";
+$DB_PASS = "";
+$DB_NAME = "";
 
 function getPDO() {
     global $DB_HOST, $DB_PORT, $DB_USER, $DB_PASS, $DB_NAME;
