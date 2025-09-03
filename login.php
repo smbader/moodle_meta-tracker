@@ -26,11 +26,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 include 'template/header.php';
 ?>
+<main id="main-content" tabindex="-1">
 <div class="container d-flex justify-content-center align-items-center" style="min-height: 80vh;">
   <div class="card shadow-sm p-4" style="min-width: 350px; max-width: 400px; width: 100%;">
     <h2 class="mb-4 text-center">Login</h2>
     <?php if (!empty($errors)) { ?>
-      <div class="alert alert-danger">
+      <div class="alert alert-danger" role="alert">
         <ul class="mb-0">
           <?php foreach ($errors as $error) { echo '<li>' . htmlspecialchars($error) . '</li>'; } ?>
         </ul>
@@ -52,4 +53,5 @@ include 'template/header.php';
     </div>
   </div>
 </div>
+</main>
 <?php include 'template/footer.php'; ?>

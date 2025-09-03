@@ -14,7 +14,7 @@ include __DIR__ . "/template/header.php";
 // Get keyname from query string
 $key = isset($_GET['key']) ? trim($_GET['key']) : '';
 if (!$key) {
-    echo '<div class="alert alert-danger">No issue key provided.</div>';
+    echo '<div class="alert alert-danger" role="alert">No issue key provided.</div>';
     include __DIR__ . "/template/footer.php";
     exit();
 }
@@ -25,7 +25,7 @@ $user_id = $_SESSION['user_id'];
 // --- New: Lookup issue in saved_issues table ---
 $mysqli = new mysqli($DB_HOST, $DB_USER, $DB_PASS, $DB_NAME, $DB_PORT);
 if ($mysqli->connect_errno) {
-    echo "<div class='alert alert-danger'>Failed to connect to MySQL: " . $mysqli->connect_error . "</div>";
+    echo "<div class='alert alert-danger' role='alert'>Failed to connect to MySQL: " . $mysqli->connect_error . "</div>";
     include __DIR__ . "/template/footer.php";
     exit();
 }
@@ -36,7 +36,7 @@ $res = $stmt->get_result();
 $savedIssue = $res->fetch_assoc();
 $stmt->close();
 if (!$savedIssue) {
-    echo '<div class="alert alert-danger">Issue not found in your saved issues.</div>';
+    echo '<div class="alert alert-danger" role="alert">Issue not found in your saved issues.</div>';
     include __DIR__ . "/template/footer.php";
     exit();
 }
@@ -66,7 +66,7 @@ if ($sourceType === 'jira') {
 
     $issue = fetchJiraDetails($key, $JIRA_DOMAIN, $JIRA_EMAIL, $JIRA_API_TOKEN);
     if (!$issue) {
-        echo '<div class="alert alert-danger">Unable to fetch JIRA issue details.</div>';
+        echo '<div class="alert alert-danger" role="alert">Unable to fetch JIRA issue details.</div>';
         include __DIR__ . "/template/footer.php";
         exit();
     }
@@ -116,7 +116,7 @@ if ($sourceType === 'jira') {
     // DB connection
     $mysqli = new mysqli($DB_HOST, $DB_USER, $DB_PASS, $DB_NAME, $DB_PORT);
     if ($mysqli->connect_errno) {
-        echo "<div class='alert alert-danger'>Failed to connect to MySQL: " . $mysqli->connect_error . "</div>";
+        echo "<div class='alert alert-danger' role='alert'>Failed to connect to MySQL: " . $mysqli->connect_error . "</div>";
         include __DIR__ . "/template/footer.php";
         exit();
     }
@@ -268,7 +268,7 @@ if ($sourceType === 'jira') {
     }
     $githubToken = getUserConfig($user_id, 'github_token');
     if (!$githubRepo || !$githubIssueNumber || !$githubToken) {
-        echo '<div class="alert alert-danger">Missing GitHub repo, issue number, or token.</div>';
+        echo '<div class="alert alert-danger" role="alert">Missing GitHub repo, issue number, or token.</div>';
         include __DIR__ . "/template/footer.php";
         exit();
     }
@@ -284,7 +284,7 @@ if ($sourceType === 'jira') {
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
     if ($httpCode !== 200 || !$response) {
-        echo '<div class="alert alert-danger">Unable to fetch GitHub issue details.</div>';
+        echo '<div class="alert alert-danger" role="alert">Unable to fetch GitHub issue details.</div>';
         include __DIR__ . "/template/footer.php";
         exit();
     }
@@ -452,80 +452,83 @@ if ($sourceType === 'jira') {
     }
 } // End of issue source type handling
 ?>
-<div class="container mt-4">
-  <div class="row">
-    <div class="col-md-6 col-12">
-      <h2 class="mb-2" style="font-size:1.5rem; word-break:break-word; white-space:normal; line-height:1.2;">
-        <span class="badge bg-secondary" style="font-size:1rem; vertical-align:middle;"><?= htmlspecialchars($key) ?></span>
-        <?= htmlspecialchars($title) ?>
-      </h2>
-      <div class="mb-3"><strong>Status:</strong> <?= htmlspecialchars($status) ?></div>
-      <div class="mb-3"><strong>Assignee:</strong> <?= htmlspecialchars($owner) ?></div>
-      <div class="mb-3"><strong>Description:</strong><br><?= nl2br(htmlspecialchars($desc)) ?></div>
-      <?php if ($latestComment): ?>
-        <div class="mb-3"><strong>Latest Comment:</strong><br><?= $latestComment ?></div>
-      <?php endif; ?>
-      <?php if ($sourceType === 'jira' && !empty($JIRA_DOMAIN)): ?>
-        <div class="mt-4">
-          <a href="<?= htmlspecialchars($JIRA_DOMAIN) ?>/browse/<?= rawurlencode($key) ?>" target="_blank" class="btn btn-primary">View in JIRA</a>
-        </div>
-      <?php elseif ($sourceType === 'github' && !empty($githubUrl)): ?>
-        <div class="mt-4">
-          <a href="<?= htmlspecialchars($githubUrl) ?>" target="_blank" class="btn btn-dark">View in GitHub</a>
-        </div>
-      <?php endif; ?>
-    </div>
-    <div class="col-md-6 col-12">
-      <h4>Internal Issue Data</h4>
-      <?php if (!empty($success_msg)): ?>
-        <div class="alert alert-success"><?= htmlspecialchars($success_msg) ?></div>
-      <?php endif; ?>
-      <form method="post">
-        <div class="mb-3">
-          <label for="internal_status_id" class="form-label">Internal Status</label>
-          <select name="internal_status_id" id="internal_status_id" class="form-select">
-            <option value="">-- Select --</option>
-            <?php foreach ($statuses as $status): ?>
-              <option value="<?= $status['id'] ?>" <?= ($selected_status == $status['id']) ? 'selected' : '' ?>><?= htmlspecialchars($status['name']) ?></option>
-            <?php endforeach; ?>
-          </select>
-        </div>
-        <div class="mb-3">
-          <label for="coworker_ids" class="form-label">Assign Worker</label>
-          <select name="coworker_ids[]" id="coworker_ids" class="form-select" multiple>
-            <?php foreach ($coworkers as $coworker): ?>
-              <option value="<?= $coworker['id'] ?>" <?= in_array($coworker['id'], $assigned_coworkers) ? 'selected' : '' ?>><?= htmlspecialchars($coworker['fullname']) ?></option>
-            <?php endforeach; ?>
-          </select>
-        </div>
-        <div class="mb-3">
-          <label for="tag_ids" class="form-label">Tags</label>
-          <select name="tag_ids[]" id="tag_ids" class="form-select" multiple>
-            <?php foreach ($tags as $tag): ?>
-              <option value="<?= $tag['id'] ?>" <?= in_array($tag['id'], $assigned_tags) ? 'selected' : '' ?>><?= htmlspecialchars($tag['name']) ?></option>
-            <?php endforeach; ?>
-          </select>
-          <small class="form-text text-muted">Hold Ctrl/Cmd to select multiple. Assigned tags will be shown below.</small>
-        </div>
-        <div class="mb-3">
-          <label for="new_tags" class="form-label">Add New Tags</label>
-          <input type="text" name="new_tags" id="new_tags" class="form-control" placeholder="Comma-separated (e.g. urgent, backend)" />
-        </div>
-        <div class="mb-3">
-          <label for="notes" class="form-label">Notes</label>
-          <textarea name="notes" id="notes" class="form-control" rows="4"><?= htmlspecialchars($notes_val) ?></textarea>
-        </div>
-        <button type="submit" name="internal_save" class="btn btn-primary">Save Internal Data</button>
-      </form>
-      <?php if (!empty($assigned_tags) && !empty($tags)): ?>
-        <div class="mb-3">
-          <strong>Assigned Tags:</strong>
-          <?php foreach ($tags as $tag): if (in_array($tag['id'], $assigned_tags)): ?>
-            <span class="badge bg-success"><?= htmlspecialchars($tag['name']) ?></span>
-          <?php endif; endforeach; ?>
-        </div>
-      <?php endif; ?>
+<main id="main-content" tabindex="-1">
+  <h1 class="visually-hidden">Issue Details</h1>
+  <div class="container mt-4">
+    <div class="row">
+      <div class="col-md-6 col-12">
+        <h2 class="mb-2" style="font-size:1.5rem; word-break:break-word; white-space:normal; line-height:1.2;">
+          <span class="badge bg-secondary" style="font-size:1rem; vertical-align:middle;"><?= htmlspecialchars($key) ?></span>
+          <?= htmlspecialchars($title) ?>
+        </h2>
+        <div class="mb-3"><strong>Status:</strong> <?= htmlspecialchars($status) ?></div>
+        <div class="mb-3"><strong>Assignee:</strong> <?= htmlspecialchars($owner) ?></div>
+        <div class="mb-3"><strong>Description:</strong><br><?= nl2br(htmlspecialchars($desc)) ?></div>
+        <?php if ($latestComment): ?>
+          <div class="mb-3"><strong>Latest Comment:</strong><br><?= $latestComment ?></div>
+        <?php endif; ?>
+        <?php if ($sourceType === 'jira' && !empty($JIRA_DOMAIN)): ?>
+          <div class="mt-4">
+            <a href="<?= htmlspecialchars($JIRA_DOMAIN) ?>/browse/<?= rawurlencode($key) ?>" target="_blank" class="btn btn-primary">View in JIRA</a>
+          </div>
+        <?php elseif ($sourceType === 'github' && !empty($githubUrl)): ?>
+          <div class="mt-4">
+            <a href="<?= htmlspecialchars($githubUrl) ?>" target="_blank" class="btn btn-dark">View in GitHub</a>
+          </div>
+        <?php endif; ?>
+      </div>
+      <div class="col-md-6 col-12">
+        <h4>Internal Issue Data</h4>
+        <?php if (!empty($success_msg)): ?>
+          <div class="alert alert-success"><?= htmlspecialchars($success_msg) ?></div>
+        <?php endif; ?>
+        <form method="post">
+          <div class="mb-3">
+            <label for="internal_status_id" class="form-label">Internal Status</label>
+            <select name="internal_status_id" id="internal_status_id" class="form-select">
+              <option value="">-- Select --</option>
+              <?php foreach ($statuses as $status): ?>
+                <option value="<?= $status['id'] ?>" <?= ($selected_status == $status['id']) ? 'selected' : '' ?>><?= htmlspecialchars($status['name']) ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="coworker_ids" class="form-label">Assign Worker</label>
+            <select name="coworker_ids[]" id="coworker_ids" class="form-select" multiple>
+              <?php foreach ($coworkers as $coworker): ?>
+                <option value="<?= $coworker['id'] ?>" <?= in_array($coworker['id'], $assigned_coworkers) ? 'selected' : '' ?>><?= htmlspecialchars($coworker['fullname']) ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="tag_ids" class="form-label">Tags</label>
+            <select name="tag_ids[]" id="tag_ids" class="form-select" multiple>
+              <?php foreach ($tags as $tag): ?>
+                <option value="<?= $tag['id'] ?>" <?= in_array($tag['id'], $assigned_tags) ? 'selected' : '' ?>><?= htmlspecialchars($tag['name']) ?></option>
+              <?php endforeach; ?>
+            </select>
+            <small class="form-text text-muted">Hold Ctrl/Cmd to select multiple. Assigned tags will be shown below.</small>
+          </div>
+          <div class="mb-3">
+            <label for="new_tags" class="form-label">Add New Tags</label>
+            <input type="text" name="new_tags" id="new_tags" class="form-control" placeholder="Comma-separated (e.g. urgent, backend)" />
+          </div>
+          <div class="mb-3">
+            <label for="notes" class="form-label">Notes</label>
+            <textarea name="notes" id="notes" class="form-control" rows="4"><?= htmlspecialchars($notes_val) ?></textarea>
+          </div>
+          <button type="submit" name="internal_save" class="btn btn-primary">Save Internal Data</button>
+        </form>
+        <?php if (!empty($assigned_tags) && !empty($tags)): ?>
+          <div class="mb-3">
+            <strong>Assigned Tags:</strong>
+            <?php foreach ($tags as $tag): if (in_array($tag['id'], $assigned_tags)): ?>
+              <span class="badge bg-success"><?= htmlspecialchars($tag['name']) ?></span>
+            <?php endif; endforeach; ?>
+          </div>
+        <?php endif; ?>
+      </div>
     </div>
   </div>
-</div>
+</main>
 <?php include __DIR__ . "/template/footer.php"; ?>

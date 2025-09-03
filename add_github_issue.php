@@ -97,61 +97,64 @@ if ($github_username && $github_token) {
     }
 }
 ?>
-<div class="container mt-4">
-  <h2>Add GitHub Issue</h2>
-  <?php if ($error_msg): ?>
-    <div class="alert alert-danger"><?php echo $error_msg; ?></div>
-  <?php elseif ($success_msg): ?>
-    <div class="alert alert-success"><?php echo $success_msg; ?></div>
-  <?php endif; ?>
-  <form method="post" class="mb-4">
-    <div class="mb-3">
-      <label for="github_issue_link" class="form-label">GitHub Issue Link</label>
-      <input type="url" class="form-control" id="github_issue_link" name="github_issue_link" placeholder="https://github.com/owner/repo/issues/123" required>
-    </div>
-    <button type="submit" class="btn btn-primary">Add Issue</button>
-  </form>
-
-  <?php if ($github_issues): ?>
-    <h3>All Visible GitHub Issues</h3>
-    <form method="post">
-      <input type="hidden" name="save_selected_issues" value="1">
-      <table class="table table-bordered table-striped">
-        <thead>
-          <tr>
-            <th scope="col"><input type="checkbox" id="select_all"></th>
-            <th scope="col">Title</th>
-            <th scope="col">Author</th>
-            <th scope="col">Submit Date</th>
-          </tr>
-        </thead>
-        <tbody>
-          <?php foreach ($github_issues as $issue): ?>
-            <tr>
-              <td><input type="checkbox" name="selected_issues[]" value='<?php echo htmlspecialchars(json_encode($issue), ENT_QUOTES, 'UTF-8'); ?>'></td>
-              <td><a href="<?php echo htmlspecialchars($issue['url']); ?>" target="_blank"><?php echo htmlspecialchars($issue['title']); ?></a></td>
-              <td><?php echo htmlspecialchars($issue['reporter']); ?></td>
-              <td><?php echo htmlspecialchars(date('Y-m-d H:i', strtotime($issue['created_at']))); ?></td>
-            </tr>
-          <?php endforeach; ?>
-        </tbody>
-      </table>
-      <button type="submit" class="btn btn-success">Save Selected Issues</button>
+<main id="main-content" tabindex="-1">
+  <h1 class="visually-hidden">Add GitHub Issue</h1>
+  <div class="container mt-4">
+    <h2>Add GitHub Issue</h2>
+    <?php if ($error_msg): ?>
+      <div class="alert alert-danger" role="alert"><?php echo $error_msg; ?></div>
+    <?php elseif ($success_msg): ?>
+      <div class="alert alert-success"><?php echo $success_msg; ?></div>
+    <?php endif; ?>
+    <form method="post" class="mb-4">
+      <div class="mb-3">
+        <label for="github_issue_link" class="form-label">GitHub Issue Link</label>
+        <input type="url" class="form-control" id="github_issue_link" name="github_issue_link" placeholder="https://github.com/owner/repo/issues/123" required>
+      </div>
+      <button type="submit" class="btn btn-primary">Add Issue</button>
     </form>
-    <script>
-      // Select/Deselect all checkboxes
-      document.addEventListener('DOMContentLoaded', function() {
-        var selectAll = document.getElementById('select_all');
-        if (selectAll) {
-          selectAll.addEventListener('change', function() {
-            var checkboxes = document.querySelectorAll('input[name="selected_issues[]"]');
-            for (var i = 0; i < checkboxes.length; i++) {
-              checkboxes[i].checked = selectAll.checked;
-            }
-          });
-        }
-      });
-    </script>
-  <?php endif; ?>
-</div>
+
+    <?php if ($github_issues): ?>
+      <h3>All Visible GitHub Issues</h3>
+      <form method="post">
+        <input type="hidden" name="save_selected_issues" value="1">
+        <table class="table table-bordered table-striped">
+          <thead>
+            <tr>
+              <th scope="col"><input type="checkbox" id="select_all"></th>
+              <th scope="col">Title</th>
+              <th scope="col">Author</th>
+              <th scope="col">Submit Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            <?php foreach ($github_issues as $issue): ?>
+              <tr>
+                <td><input type="checkbox" name="selected_issues[]" value='<?php echo htmlspecialchars(json_encode($issue), ENT_QUOTES, 'UTF-8'); ?>'></td>
+                <td><a href="<?php echo htmlspecialchars($issue['url']); ?>" target="_blank"><?php echo htmlspecialchars($issue['title']); ?></a></td>
+                <td><?php echo htmlspecialchars($issue['reporter']); ?></td>
+                <td><?php echo htmlspecialchars(date('Y-m-d H:i', strtotime($issue['created_at']))); ?></td>
+              </tr>
+            <?php endforeach; ?>
+          </tbody>
+        </table>
+        <button type="submit" class="btn btn-success">Save Selected Issues</button>
+      </form>
+      <script>
+        // Select/Deselect all checkboxes
+        document.addEventListener('DOMContentLoaded', function() {
+          var selectAll = document.getElementById('select_all');
+          if (selectAll) {
+            selectAll.addEventListener('change', function() {
+              var checkboxes = document.querySelectorAll('input[name="selected_issues[]"]');
+              for (var i = 0; i < checkboxes.length; i++) {
+                checkboxes[i].checked = selectAll.checked;
+              }
+            });
+          }
+        });
+      </script>
+    <?php endif; ?>
+  </div>
+</main>
 <?php require_once __DIR__ . '/template/footer.php'; ?>

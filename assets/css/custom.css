@@ -60,3 +60,40 @@
 .kanban-col .card-body {
     overflow-x: auto;
 }
+
+/* Visually hidden but focusable skip link */
+.skip-link {
+  position: absolute;
+  left: -999px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  z-index: 1000;
+  background: #fff;
+  color: #212529;
+  padding: 0.5em 1em;
+  border-radius: 0.25em;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.skip-link:focus {
+  left: 1em;
+  top: 1em;
+  width: auto;
+  height: auto;
+  outline: 2px solid #f98012;
+  outline-offset: 2px;
+  background: #f98012;
+  color: #fff;
+}
+
+/* Kanban scroll window framing */
+.kanban-scroll {
+    border: 2px solid #e0e0e0;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    background: #f6f8fa;
+    padding: 1.5em 1em 1em 1em;
+    margin-bottom: 2em;
+    position: relative;
+}
