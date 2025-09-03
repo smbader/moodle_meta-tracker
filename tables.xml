@@ -16,10 +16,14 @@
   <table name="saved_issues">
     <column name="id" type="INT" autoincrement="true" primary="true" />
     <column name="user_id" type="INT" notnull="true" />
-    <column name="keyname" type="VARCHAR(255)" notnull="true" />
+    <column name="keyname" type="VARCHAR(512)" notnull="true" />
     <column name="pull_from_repository" type="TEXT" />
     <column name="pull_main_diff_url" type="TEXT" />
     <column name="pull_main_branch" type="TEXT" />
+    <column name="source_type" type="VARCHAR(16)" notnull="true" />
+    <column name="title" type="VARCHAR(255)" />
+    <column name="reporter" type="VARCHAR(255)" />
+    <column name="status" type="VARCHAR(64)" />
   </table>
   <table name="config">
     <column name="id" type="INT" autoincrement="true" primary="true" />
@@ -34,7 +38,7 @@
   <!-- New table for local issue tracking -->
   <table name="issues">
     <column name="id" type="INT" autoincrement="true" primary="true" />
-    <column name="jira_key" type="VARCHAR(64)" notnull="true" unique="true" />
+    <column name="keyname" type="VARCHAR(64)" notnull="true" unique="true" />
     <column name="title" type="VARCHAR(255)" />
     <column name="desc" type="TEXT" />
     <column name="internal_status_id" type="INT" />

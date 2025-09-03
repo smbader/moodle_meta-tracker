@@ -196,8 +196,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save'])) {
         $pull_from_repository = isset($_POST['pull_from_repository'][$keyname]) ? $_POST['pull_from_repository'][$keyname] : null;
         $pull_main_diff_url = isset($_POST['pull_main_diff_url'][$keyname]) ? $_POST['pull_main_diff_url'][$keyname] : null;
         $pull_main_branch = isset($_POST['pull_main_branch'][$keyname]) ? $_POST['pull_main_branch'][$keyname] : null;
-        $stmt = $mysqli->prepare("INSERT INTO saved_issues (user_id, keyname, pull_from_repository, pull_main_diff_url, pull_main_branch) VALUES (?, ?, ?, ?, ?)");
-        $stmt->bind_param("issss", $user_id, $keyname, $pull_from_repository, $pull_main_diff_url, $pull_main_branch);
+        $source_type = 'jira';
+        $stmt = $mysqli->prepare("INSERT INTO saved_issues (user_id, keyname, pull_from_repository, pull_main_diff_url, pull_main_branch, source_type) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("isssss", $user_id, $keyname, $pull_from_repository, $pull_main_diff_url, $pull_main_branch, $source_type);
         $stmt->execute();
         $stmt->close();
     }

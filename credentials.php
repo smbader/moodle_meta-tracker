@@ -21,7 +21,7 @@ echo "Current User ID: " . htmlspecialchars($user_id);
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $fields = ['jira_email', 'jira_token', 'jira_domain'];
+    $fields = ['jira_email', 'jira_token', 'jira_domain', 'github_username', 'github_token'];
     foreach ($fields as $field) {
         $value = $mysqli->real_escape_string(isset($_POST[$field]) ? $_POST[$field] : '');
         $name = $mysqli->real_escape_string($field);
@@ -38,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Fetch current values for this user
 $config = [];
-$stmt = $mysqli->prepare("SELECT name, value FROM config WHERE user_id = ? AND name IN ('jira_email','jira_token','jira_domain')");
+$stmt = $mysqli->prepare("SELECT name, value FROM config WHERE user_id = ? AND name IN ('jira_email','jira_token','jira_domain','github_username','github_token')");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $res = $stmt->get_result();
@@ -61,6 +61,15 @@ $mysqli->close();
   <div class="mb-3">
     <label for="jira_domain" class="form-label">JIRA Domain</label>
     <input type="text" class="form-control" id="jira_domain" name="jira_domain" value="<?php echo htmlspecialchars(isset($config['jira_domain']) ? $config['jira_domain'] : ''); ?>" required>
+  </div>
+  <h2>GitHub Credentials</h2>
+  <div class="mb-3">
+    <label for="github_username" class="form-label">GitHub Username</label>
+    <input type="text" class="form-control" id="github_username" name="github_username" value="<?php echo htmlspecialchars(isset($config['github_username']) ? $config['github_username'] : ''); ?>" required>
+  </div>
+  <div class="mb-3">
+    <label for="github_token" class="form-label">GitHub Token</label>
+    <input type="text" class="form-control" id="github_token" name="github_token" value="<?php echo htmlspecialchars(isset($config['github_token']) ? $config['github_token'] : ''); ?>" required>
   </div>
   <button type="submit" class="btn btn-primary">Save</button>
 </form>

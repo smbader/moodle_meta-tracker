@@ -1,5 +1,9 @@
 <?php
 require_once __DIR__ . '/config.php';
+// Ensure DB config variables are in global scope
+if (!isset($DB_HOST)) {
+    global $DB_HOST, $DB_USER, $DB_PASS, $DB_NAME, $DB_PORT;
+}
 session_start();
 if (!isset($_SESSION['user_id'])) {
     header('Location: login.php');
@@ -7,10 +11,10 @@ if (!isset($_SESSION['user_id'])) {
 }
 include __DIR__ . "/template/header.php";
 
-// Get JIRA key from query string
+// Get keyname from query string
 $key = isset($_GET['key']) ? trim($_GET['key']) : '';
 if (!$key) {
-    echo '<div class="alert alert-danger">No JIRA key provided.</div>';
+    echo '<div class="alert alert-danger">No issue key provided.</div>';
     include __DIR__ . "/template/footer.php";
     exit();
 }
@@ -102,7 +106,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['internal_save'])) {
     $notes = isset($_POST['notes']) ? trim($_POST['notes']) : '';
     $coworker_ids = isset($_POST['coworker_ids']) ? array_map('intval', $_POST['coworker_ids']) : array();
     // Upsert issue
-    $stmt = $mysqli->prepare('SELECT id FROM issues WHERE jira_key = ?');
+    $stmt = $mysqli->prepare('SELECT id FROM issues WHERE keyname = ?');
     $stmt->bind_param('s', $key);
     $stmt->execute();
     $stmt->bind_result($issue_id);
@@ -114,7 +118,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['internal_save'])) {
         $stmt->execute();
         $stmt->close();
     } else {
-        $stmt = $mysqli->prepare('INSERT INTO issues (jira_key, title, `desc`, internal_status_id, notes) VALUES (?, ?, ?, ?, ?)');
+        $stmt = $mysqli->prepare('INSERT INTO issues (keyname, title, `desc`, internal_status_id, notes) VALUES (?, ?, ?, ?, ?)');
         $stmt->bind_param('sssis', $key, $title, $desc, $internal_status_id, $notes);
         $stmt->execute();
         $issue_id = $stmt->insert_id;
@@ -134,7 +138,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['internal_save'])) {
     $success_msg = 'Internal data saved.';
 }
 // Load internal data
-$stmt = $mysqli->prepare('SELECT * FROM issues WHERE jira_key = ?');
+$stmt = $mysqli->prepare('SELECT * FROM issues WHERE keyname = ?');
 $stmt->bind_param('s', $key);
 $stmt->execute();
 $res = $stmt->get_result();

@@ -33,6 +33,14 @@
             <li><a class="dropdown-item" href="/internal_settings.php">Internal Settings</a></li>
           </ul>
         </li>
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" id="githubDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            GitHub
+          </a>
+          <ul class="dropdown-menu" aria-labelledby="githubDropdown">
+            <li><a class="dropdown-item" href="/add_github_issue.php">Add GitHub Issue</a></li>
+          </ul>
+        </li>
         <?php if (isset($_SESSION['user_id'])): ?>
           <li class="nav-item"><span class="nav-link">Hello, <?php echo htmlspecialchars($_SESSION['fullname']); ?></span></li>
           <li class="nav-item"><a class="nav-link" href="/logout.php">Logout</a></li>

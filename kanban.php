@@ -1,5 +1,9 @@
 <?php
 require_once __DIR__ . '/config.php';
+// Ensure DB config variables are in global scope
+if (!isset($DB_HOST)) {
+    global $DB_HOST, $DB_USER, $DB_PASS, $DB_NAME, $DB_PORT;
+}
 session_start();
 if (!isset($_SESSION['user_id'])) {
     header('Location: login.php');
@@ -64,21 +68,45 @@ $columns = array_merge([
     ['id' => $noStatusId, 'name' => 'No Internal Status']
 ], $statuses);
 
-// Fetch all issues for this user (with or without internal status)
+// Fetch all saved_issues for the user
+$savedIssues = [];
+$stmt = $mysqli->prepare("SELECT * FROM saved_issues WHERE user_id = ?");
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$res = $stmt->get_result();
+while ($row = $res->fetch_assoc()) {
+    $savedIssues[$row['keyname']] = $row;
+}
+$stmt->close();
+
+// Fetch all internal issues for the user, indexed by keyname
+$internalIssues = [];
 $stmt = $mysqli->prepare("SELECT * FROM issues WHERE internal_status_id IN (SELECT id FROM statuses WHERE user_id = ?) OR internal_status_id IS NULL");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $res = $stmt->get_result();
-$allIssues = [];
 while ($row = $res->fetch_assoc()) {
-    $allIssues[] = $row;
+    $internalIssues[$row['keyname']] = $row;
 }
 $stmt->close();
 
-// Fetch coworkers for each issue
+// Merge saved_issues with internal issues
+$allIssues = [];
+foreach ($savedIssues as $keyname => $saved) {
+    $merged = $saved;
+    if (isset($internalIssues[$keyname])) {
+        // Merge, internal fields take lower priority
+        $merged = array_merge($internalIssues[$keyname], $saved);
+    }
+    $allIssues[] = $merged;
+}
+$mysqli->close();
+
+// Fetch coworkers for each merged issue (if internal id exists)
 $issueCoworkers = [];
+$mysqli = new mysqli($DB_HOST, $DB_USER, $DB_PASS, $DB_NAME, $DB_PORT);
 foreach ($allIssues as $issue) {
-    $issue_id = $issue['id'];
+    $issue_id = isset($issue['id']) ? $issue['id'] : null;
     $issueCoworkers[$issue_id] = [];
     if (!empty($issue_id)) {
         $stmt = $mysqli->prepare("SELECT c.fullname FROM issue_coworkers ic JOIN coworkers c ON ic.coworker_id = c.id WHERE ic.issue_id = ?");
@@ -93,11 +121,11 @@ foreach ($allIssues as $issue) {
 }
 $mysqli->close();
 
-// Fetch JIRA details for each issue
+// Fetch JIRA details for each merged issue
 foreach ($allIssues as &$issue) {
     $jira = null;
-    if (!empty($issue['jira_key'])) {
-        $jira = fetchJiraIssue($issue['jira_key'], $JIRA_DOMAIN, $JIRA_EMAIL, $JIRA_API_TOKEN);
+    if (!empty($issue['keyname'])) {
+        $jira = fetchJiraIssue($issue['keyname'], $JIRA_DOMAIN, $JIRA_EMAIL, $JIRA_API_TOKEN);
     }
     $issue['jira_summary'] = isset($jira['summary']) ? $jira['summary'] : (isset($issue['title']) ? $issue['title'] : '[No summary]');
     $issue['jira_status'] = isset($jira['status']) ? $jira['status'] : '[No JIRA Status]';
@@ -126,44 +154,6 @@ foreach ($allIssues as $issue) {
     $issuesByColumnAndLane[$colId][$lane][] = $issue;
 }
 
-// --- Add saved_issues that are not in issues ---
-$mysqli = new mysqli($DB_HOST, $DB_USER, $DB_PASS, $DB_NAME, $DB_PORT);
-$savedJiraKeys = [];
-$stmt = $mysqli->prepare("SELECT keyname FROM saved_issues WHERE user_id = ?");
-$stmt->bind_param("i", $user_id);
-$stmt->execute();
-$res = $stmt->get_result();
-while ($row = $res->fetch_assoc()) {
-    $savedJiraKeys[] = $row['keyname'];
-}
-$stmt->close();
-$mysqli->close();
-
-// Get all jira_keys from issues
-$existingJiraKeys = array_map(function($issue) {
-    return $issue['jira_key'];
-}, $allIssues);
-
-// Find saved_issues not in issues
-$untrackedJiraKeys = array_diff($savedJiraKeys, $existingJiraKeys);
-foreach ($untrackedJiraKeys as $keyname) {
-    $jira = fetchJiraIssue($keyname, $JIRA_DOMAIN, $JIRA_EMAIL, $JIRA_API_TOKEN);
-    $pseudoIssue = [
-        'jira_key' => $keyname,
-        'jira_summary' => isset($jira['summary']) ? $jira['summary'] : '[No summary]',
-        'jira_status' => isset($jira['status']) ? $jira['status'] : '[No JIRA Status]',
-        'jira_updated' => isset($jira['updated']) ? $jira['updated'] : '',
-        'jira_assignee' => isset($jira['assignee']) ? $jira['assignee'] : '[No assignee]',
-        'notes' => 'Not tracked locally',
-        'id' => 'saved_' . $keyname // unique pseudo-id
-    ];
-    $lane = $pseudoIssue['jira_status'];
-    if (!isset($issuesByColumnAndLane[$noStatusId][$lane])) {
-        $issuesByColumnAndLane[$noStatusId][$lane] = [];
-    }
-    $issuesByColumnAndLane[$noStatusId][$lane][] = $pseudoIssue;
-}
-
 // Color palette for columns
 $laneColors = [
     'bg-primary', 'bg-success', 'bg-warning', 'bg-info', 'bg-secondary', 'bg-dark', 'bg-light text-dark'
@@ -188,8 +178,8 @@ $laneColors = [
                   <div class="card mb-2 shadow-sm" style="font-size:0.97em;">
                     <div class="card-body p-2">
                       <h6 class="card-title mb-1" style="font-size:1em; word-break:break-word; white-space:normal;">
-                        <a href="view.php?key=<?= rawurlencode(isset($issue['jira_key']) ? $issue['jira_key'] : '') ?>" style="text-decoration:none; font-weight:bold; color:inherit;">
-                          <?= htmlspecialchars(isset($issue['jira_key']) ? $issue['jira_key'] : '[No JIRA key]') ?>
+                        <a href="view.php?key=<?= rawurlencode(isset($issue['keyname']) ? $issue['keyname'] : '') ?>" style="text-decoration:none; font-weight:bold; color:inherit;">
+                          <?= htmlspecialchars(isset($issue['keyname']) ? $issue['keyname'] : '[No JIRA key]') ?>
                         </a>: <?= htmlspecialchars(isset($issue['jira_summary']) ? $issue['jira_summary'] : '[No summary]') ?>
                       </h6>
                       <div class="mb-1">
