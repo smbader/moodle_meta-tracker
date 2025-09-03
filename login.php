@@ -18,8 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($user && password_verify($password, $user['password_hash'])) {
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['fullname'] = $user['fullname'];
-        header('Location: index.php');
-        exit;
+        $loginSuccess = true;
     } else {
         $errors[] = 'Invalid email or password.';
     }
@@ -30,6 +29,12 @@ include 'template/header.php';
 <div class="container d-flex justify-content-center align-items-center" style="min-height: 80vh;">
   <div class="card shadow-sm p-4" style="min-width: 350px; max-width: 400px; width: 100%;">
     <h2 class="mb-4 text-center">Login</h2>
+    <?php if (!empty($loginSuccess)) { ?>
+      <div class="alert alert-success" role="alert">
+        Welcome, <?php echo htmlspecialchars($_SESSION['fullname'] ?? 'user'); ?>
+        <br><a href="index.php">Go to main page</a>
+      </div>
+    <?php } ?>
     <?php if (!empty($errors)) { ?>
       <div class="alert alert-danger" role="alert">
         <ul class="mb-0">
@@ -37,6 +42,7 @@ include 'template/header.php';
         </ul>
       </div>
     <?php } ?>
+    <?php if (empty($loginSuccess)) { ?>
     <form method="post">
       <div class="mb-3">
         <label for="email" class="form-label">Email</label>
@@ -51,6 +57,7 @@ include 'template/header.php';
     <div class="mt-3 text-center">
       <a href="register.php">Don't have an account? Register</a>
     </div>
+    <?php } ?>
   </div>
 </div>
 </main>

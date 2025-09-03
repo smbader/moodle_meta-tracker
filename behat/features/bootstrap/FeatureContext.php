@@ -31,13 +31,14 @@ class FeatureContext implements Context
     }
 
     /**
-     * @When I submit the registration form with username :username and password :password
+     * @When I submit the registration form with fullname :fullname, email :email and password :password
      */
-    public function iSubmitTheRegistrationForm($username, $password)
+    public function iSubmitTheRegistrationForm($fullname, $email, $password)
     {
         $this->response = $this->client->post('/register.php', [
             'form_params' => [
-                'username' => $username,
+                'fullname' => $fullname,
+                'email' => $email,
                 'password' => $password,
                 'submit' => 'Register'
             ]
@@ -45,13 +46,13 @@ class FeatureContext implements Context
     }
 
     /**
-     * @When I submit the login form with username :username and password :password
+     * @When I submit the login form with email :email and password :password
      */
-    public function iSubmitTheLoginForm($username, $password)
+    public function iSubmitTheLoginForm($email, $password)
     {
         $this->response = $this->client->post('/login.php', [
             'form_params' => [
-                'username' => $username,
+                'email' => $email,
                 'password' => $password,
                 'submit' => 'Login'
             ]
@@ -70,11 +71,11 @@ class FeatureContext implements Context
     }
 
     /**
-     * @Given I am logged in as :username with password :password
+     * @Given I am logged in as :email with password :password
      */
-    public function iAmLoggedInAsWithPassword($username, $password)
+    public function iAmLoggedInAsWithPassword($email, $password)
     {
-        $this->iSubmitTheLoginForm($username, $password);
+        $this->iSubmitTheLoginForm($email, $password);
     }
 
     /**
