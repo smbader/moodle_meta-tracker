@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="/assets/css/custom.css">
 </head>
 <body>
+<a href="#main-content" class="skip-link visually-hidden-focusable">Skip to main content</a>
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
   <div class="container-fluid">
     <a class="navbar-brand" href="/">META Tracker</a>
@@ -52,4 +53,4 @@
     </div>
   </div>
 </nav>
-<div class="container">
+<div class="container" id="main-content">

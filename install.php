@@ -85,7 +85,7 @@ $mysqli->query("CREATE TABLE IF NOT EXISTS config (
 
 $mysqli = new mysqli($DB_HOST, $DB_USER, $DB_PASS, $DB_NAME, $DB_PORT);
 if ($mysqli->connect_errno) {
-    echo "<div class='alert alert-danger'>Failed to connect to MySQL: (" . $mysqli->connect_errno . ") " . $mysqli->connect_error . "</div>";
+    echo "<div class='alert alert-danger' role='alert'>Failed to connect to MySQL: (" . $mysqli->connect_errno . ") " . $mysqli->connect_error . "</div>";
     require_once __DIR__ . '/template/footer.php';
     exit();
 }
@@ -95,11 +95,15 @@ $desiredSchema = getXmlSchema(__DIR__ . '/tables.xml');
 $changes = syncSchema($mysqli, $currentSchema, $desiredSchema);
 
 if ($changes) {
-    echo "<div class='alert alert-warning'><strong>Schema updated:</strong><ul>";
+    echo "<div class='alert alert-warning' role='alert'><strong>Schema updated:</strong><ul>";
     foreach ($changes as $change) echo "<li>$change</li>";
     echo "</ul></div>";
 } else {
     echo "<div class='alert alert-success'>Database schema is up to date.</div>";
 }
-
-require_once __DIR__ . '/template/footer.php';
+?>
+<main id="main-content" tabindex="-1">
+  <h1 class="visually-hidden">Install & Schema Sync</h1>
+  <!-- Existing install and schema sync output goes here -->
+</main>
+<?php require_once __DIR__ . '/template/footer.php'; ?>

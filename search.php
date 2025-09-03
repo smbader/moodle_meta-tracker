@@ -133,54 +133,56 @@ if (!empty($_GET['project'])) {
 $pageTitle = "JIRA Issue Search";
 require_once __DIR__ . '/template/header.php';
 ?>
-<div class="row justify-content-center mb-4">
-  <div class="col-md-8">
-    <form method="get" class="card card-body shadow-sm mb-4">
-      <div class="row g-3 align-items-center">
-        <div class="col-md-4">
-          <label for="project" class="form-label">Project</label>
-          <select name="project" id="project" class="form-select" required onchange="this.form.submit()">
-            <option value="">Select a project</option>
-            <?php foreach ($projects as $project): ?>
-              <option value="<?php echo htmlspecialchars($project['key']); ?>"
-                <?php if (isset($_GET['project']) && $_GET['project'] === $project['key']) echo 'selected'; ?>>
-                <?php echo htmlspecialchars($project['name']); ?>
-              </option>
-            <?php endforeach; ?>
-          </select>
-        </div>
-        <div class="col-md-4">
-          <label for="keywords" class="form-label">Search Keywords</label>
-          <input type="text" name="keywords" id="keywords" class="form-control" required value="<?php echo isset($_GET['keywords']) ? htmlspecialchars($_GET['keywords']) : ''; ?>">
-        </div>
-        <div class="col-md-3">
-          <label for="status" class="form-label">Issue State</label>
-          <select name="status" id="status" class="form-select">
-            <option value="">Any</option>
-            <?php foreach ($statuses as $status): ?>
-              <option value="<?php echo htmlspecialchars($status['name']); ?>"
-                <?php if (isset($_GET['status']) && $_GET['status'] === $status['name']) echo 'selected'; ?>>
-                <?php echo htmlspecialchars($status['name']); ?>
-              </option>
-            <?php endforeach; ?>
-          </select>
-        </div>
-        <div class="col-md-1 d-flex align-items-end">
-          <input type="hidden" name="page" value="1">
-          <button type="submit" class="btn btn-primary w-100">Search</button>
-        </div>
-      </div>
-      <div class="row mt-3">
-        <div class="col-md-12">
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" name="coworkers" id="coworkers" value="1" <?php if (isset($_GET['coworkers']) && $_GET['coworkers'] == '1') echo 'checked'; ?>>
-            <label class="form-check-label" for="coworkers">Coworkers</label>
+<main id="main-content" tabindex="-1">
+  <h1 class="visually-hidden">JIRA Issue Search</h1>
+  <div class="row justify-content-center mb-4">
+    <div class="col-md-8">
+      <form method="get" class="card card-body shadow-sm mb-4">
+        <div class="row g-3 align-items-center">
+          <div class="col-md-4">
+            <label for="project" class="form-label">Project</label>
+            <select name="project" id="project" class="form-select" required onchange="this.form.submit()">
+              <option value="">Select a project</option>
+              <?php foreach ($projects as $project): ?>
+                <option value="<?php echo htmlspecialchars($project['key']); ?>"
+                  <?php if (isset($_GET['project']) && $_GET['project'] === $project['key']) echo 'selected'; ?>>
+                  <?php echo htmlspecialchars($project['name']); ?>
+                </option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label for="keywords" class="form-label">Search Keywords</label>
+            <input type="text" name="keywords" id="keywords" class="form-control" required value="<?php echo isset($_GET['keywords']) ? htmlspecialchars($_GET['keywords']) : ''; ?>">
+          </div>
+          <div class="col-md-3">
+            <label for="status" class="form-label">Issue State</label>
+            <select name="status" id="status" class="form-select">
+              <option value="">Any</option>
+              <?php foreach ($statuses as $status): ?>
+                <option value="<?php echo htmlspecialchars($status['name']); ?>"
+                  <?php if (isset($_GET['status']) && $_GET['status'] === $status['name']) echo 'selected'; ?>>
+                  <?php echo htmlspecialchars($status['name']); ?>
+                </option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div class="col-md-1 d-flex align-items-end">
+            <input type="hidden" name="page" value="1">
+            <button type="submit" class="btn btn-primary w-100">Search</button>
           </div>
         </div>
-      </div>
-    </form>
+        <div class="row mt-3">
+          <div class="col-md-12">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="coworkers" id="coworkers" value="1" <?php if (isset($_GET['coworkers']) && $_GET['coworkers'] == '1') echo 'checked'; ?>>
+              <label class="form-check-label" for="coworkers">Coworkers</label>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
   </div>
-</div>
 
 <?php
 // Handle form submission for saving selected issues
@@ -255,7 +257,7 @@ if (!empty($_GET['keywords']) && !empty($_GET['project'])) {
     $response = curl_exec($ch);
 
     if (curl_errno($ch)) {
-        echo "<div class='alert alert-danger'>cURL error: " . curl_error($ch) . "</div>";
+        echo "<div class='alert alert-danger' role='alert'>cURL error: " . curl_error($ch) . "</div>";
     } else {
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         if ($httpCode == 200) {
@@ -327,7 +329,7 @@ if (!empty($_GET['keywords']) && !empty($_GET['project'])) {
                 echo "<div class='alert alert-info'>No issues found.</div>";
             }
         } else {
-            echo "<div class='alert alert-danger'>Request failed. HTTP Code: $httpCode<br>Response: $response</div>";
+            echo "<div class='alert alert-danger' role='alert'>Request failed. HTTP Code: $httpCode<br>Response: $response</div>";
         }
     }
     curl_close($ch);

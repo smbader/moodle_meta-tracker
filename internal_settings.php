@@ -9,7 +9,7 @@ $user_id = $_SESSION['user_id'];
 // Connect to DB using MySQLi
 $mysqli = new mysqli($DB_HOST, $DB_USER, $DB_PASS, $DB_NAME, $DB_PORT);
 if ($mysqli->connect_errno) {
-    echo "<div class='alert alert-danger'>Failed to connect to MySQL: " . $mysqli->connect_error . "</div>";
+    echo "<div class='alert alert-danger' role='alert'>Failed to connect to MySQL: " . $mysqli->connect_error . "</div>";
     require_once __DIR__ . '/template/footer.php';
     exit;
 }
@@ -78,37 +78,40 @@ while ($row = $res->fetch_assoc()) {
 }
 $stmt->close();
 ?>
-<div class="container mt-4">
-  <h2>Manage Internal Statuses</h2>
-  <form method="post" class="mb-3">
-    <div class="input-group">
-      <input type="text" name="status_name" class="form-control" placeholder="New status name" required>
-      <button type="submit" name="add_status" class="btn btn-success">Add Status</button>
-    </div>
-  </form>
-  <table class="table table-bordered">
-    <thead><tr><th>Status</th><th>Actions</th></tr></thead>
-    <tbody>
-      <?php foreach ($statuses as $i => $status): ?>
-        <tr>
-          <td><?= htmlspecialchars($status['name']) ?></td>
-          <td>
-            <form method="post" style="display:inline">
-              <input type="hidden" name="delete_status" value="<?= $status['id'] ?>">
-              <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete this status?')">Delete</button>
-            </form>
-            <form method="post" style="display:inline">
-              <input type="hidden" name="move_up" value="<?= $status['id'] ?>">
-              <button type="submit" class="btn btn-secondary btn-sm" <?= $i === 0 ? 'disabled' : '' ?>>Up</button>
-            </form>
-            <form method="post" style="display:inline">
-              <input type="hidden" name="move_down" value="<?= $status['id'] ?>">
-              <button type="submit" class="btn btn-secondary btn-sm" <?= $i === count($statuses)-1 ? 'disabled' : '' ?>>Down</button>
-            </form>
-          </td>
-        </tr>
-      <?php endforeach; ?>
-    </tbody>
-  </table>
-</div>
+<main id="main-content" tabindex="-1">
+  <h1 class="visually-hidden">Internal Settings</h1>
+  <div class="container mt-4">
+    <h2>Manage Internal Statuses</h2>
+    <form method="post" class="mb-3">
+      <div class="input-group">
+        <input type="text" name="status_name" class="form-control" placeholder="New status name" required>
+        <button type="submit" name="add_status" class="btn btn-success">Add Status</button>
+      </div>
+    </form>
+    <table class="table table-bordered">
+      <thead><tr><th>Status</th><th>Actions</th></tr></thead>
+      <tbody>
+        <?php foreach ($statuses as $i => $status): ?>
+          <tr>
+            <td><?= htmlspecialchars($status['name']) ?></td>
+            <td>
+              <form method="post" style="display:inline">
+                <input type="hidden" name="delete_status" value="<?= $status['id'] ?>">
+                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete this status?')">Delete</button>
+              </form>
+              <form method="post" style="display:inline">
+                <input type="hidden" name="move_up" value="<?= $status['id'] ?>">
+                <button type="submit" class="btn btn-secondary btn-sm" <?= $i === 0 ? 'disabled' : '' ?>>Up</button>
+              </form>
+              <form method="post" style="display:inline">
+                <input type="hidden" name="move_down" value="<?= $status['id'] ?>">
+                <button type="submit" class="btn btn-secondary btn-sm" <?= $i === count($statuses)-1 ? 'disabled' : '' ?>>Down</button>
+              </form>
+            </td>
+          </tr>
+        <?php endforeach; ?>
+      </tbody>
+    </table>
+  </div>
+</main>
 <?php require_once __DIR__ . '/template/footer.php'; ?>

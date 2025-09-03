@@ -38,7 +38,7 @@ function fetchJiraIssueDashboard($keyname, $jiraDomain, $jiraEmail, $jiraToken) 
 
 $mysqli = new mysqli($DB_HOST, $DB_USER, $DB_PASS, $DB_NAME, $DB_PORT);
 if ($mysqli->connect_errno) {
-    echo "<div class='alert alert-danger'>Failed to connect to MySQL: (" . $mysqli->connect_errno . ") " . $mysqli->connect_error . "</div>";
+    echo "<div class='alert alert-danger' role='alert'>Failed to connect to MySQL: (" . $mysqli->connect_errno . ") " . $mysqli->connect_error . "</div>";
     require_once __DIR__ . '/template/footer.php';
     exit;
 }
@@ -153,70 +153,73 @@ usort($allIssues, function($a, $b) {
 });
 $mysqli->close();
 ?>
-<section class="section">
+<main id="main-content" tabindex="-1">
+  <h1 class="visually-hidden">Dashboard</h1>
+  <section class="section">
     <div class="container">
-        <div class="row g-4">
-            <div class="col-12">
-                <div class="card h-100">
-                    <div class="card-header text-center bg-primary text-white">Saved Issues Overview</div>
-                    <div class="card-body">
-                        <table class="table table-striped table-bordered align-middle">
-                            <thead>
-                                <tr>
-                                    <th>Issue Key</th>
-                                    <th>Title</th>
-                                    <th>Tags</th>
-                                    <th>Assigned Workers</th>
-                                    <th>Last Update</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php if (!empty($allIssues)): ?>
-                                    <?php foreach ($allIssues as $issue): ?>
-                                        <tr>
-                                            <td style="white-space:nowrap;">
-                                                <?php if (isset($issue['source_type']) && $issue['source_type'] === 'jira'): ?>
-                                                    <a href="<?= htmlspecialchars($JIRA_DOMAIN . '/browse/' . urlencode($issue['keyname'])) ?>" target="_blank"><strong><?= htmlspecialchars($issue['keyname']) ?></strong></a>
-                                                <?php elseif (isset($issue['source_type']) && $issue['source_type'] === 'github' && preg_match('#^([\w\-\.]+)/([\w\-\.]+)\#(\d+)$#', $issue['keyname'], $m)): ?>
-                                                    <a href="https://github.com/<?= htmlspecialchars($m[1]) ?>/<?= htmlspecialchars($m[2]) ?>/issues/<?= htmlspecialchars($m[3]) ?>" target="_blank"><strong><?= htmlspecialchars($issue['keyname']) ?></strong></a>
-                                                <?php else: ?>
-                                                    <?= htmlspecialchars($issue['keyname']) ?>
-                                                <?php endif; ?>
-                                            </td>
-                                            <td><?= htmlspecialchars($issue['display_title']) ?></td>
-                                            <td>
-                                                <?php if (!empty($issue['tags'])): ?>
-                                                    <?php foreach ($issue['tags'] as $tag): ?>
-                                                        <span class="badge bg-success">#<?= htmlspecialchars($tag) ?></span>
-                                                    <?php endforeach; ?>
-                                                <?php else: ?>
-                                                    <span class="text-muted">None</span>
-                                                <?php endif; ?>
-                                            </td>
-                                            <td>
-                                                <?php $iid = isset($issue['internal_issue_id']) ? $issue['internal_issue_id'] : null; ?>
-                                                <?php if (!empty($iid) && !empty($issueCoworkers[$iid])): ?>
-                                                    <?php foreach ($issueCoworkers[$iid] as $coworker): ?>
-                                                        <span class="badge bg-secondary"><?= htmlspecialchars($coworker) ?></span>
-                                                    <?php endforeach; ?>
-                                                <?php else: ?>
-                                                    <span class="text-muted">None</span>
-                                                <?php endif; ?>
-                                            </td>
-                                            <td><?= !empty($issue['display_last_update']) ? date('Y-m-d H:i', strtotime($issue['display_last_update'])) : 'N/A' ?></td>
-                                            <td><?= htmlspecialchars($issue['display_status']) ?></td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                <?php else: ?>
-                                    <tr><td colspan="6" class="text-center text-muted">No saved issues found.</td></tr>
-                                <?php endif; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+      <div class="row g-4">
+        <div class="col-12">
+          <div class="card h-100">
+            <div class="card-header text-center bg-primary text-white">Saved Issues Overview</div>
+            <div class="card-body">
+              <table class="table table-striped table-bordered align-middle">
+                <thead>
+                  <tr>
+                    <th>Issue Key</th>
+                    <th>Title</th>
+                    <th>Tags</th>
+                    <th>Assigned Workers</th>
+                    <th>Last Update</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <?php if (!empty($allIssues)): ?>
+                    <?php foreach ($allIssues as $issue): ?>
+                      <tr>
+                        <td style="white-space:nowrap;">
+                          <?php if (isset($issue['source_type']) && $issue['source_type'] === 'jira'): ?>
+                            <a href="<?= htmlspecialchars($JIRA_DOMAIN . '/browse/' . urlencode($issue['keyname'])) ?>" target="_blank"><strong><?= htmlspecialchars($issue['keyname']) ?></strong></a>
+                          <?php elseif (isset($issue['source_type']) && $issue['source_type'] === 'github' && preg_match('#^([\w\-\.]+)/([\w\-\.]+)\#(\d+)$#', $issue['keyname'], $m)): ?>
+                            <a href="https://github.com/<?= htmlspecialchars($m[1]) ?>/<?= htmlspecialchars($m[2]) ?>/issues/<?= htmlspecialchars($m[3]) ?>" target="_blank"><strong><?= htmlspecialchars($issue['keyname']) ?></strong></a>
+                          <?php else: ?>
+                            <?= htmlspecialchars($issue['keyname']) ?>
+                          <?php endif; ?>
+                        </td>
+                        <td><?= htmlspecialchars($issue['display_title']) ?></td>
+                        <td>
+                          <?php if (!empty($issue['tags'])): ?>
+                            <?php foreach ($issue['tags'] as $tag): ?>
+                              <span class="badge bg-success">#<?= htmlspecialchars($tag) ?></span>
+                            <?php endforeach; ?>
+                          <?php else: ?>
+                            <span class="text-muted">None</span>
+                          <?php endif; ?>
+                        </td>
+                        <td>
+                          <?php $iid = isset($issue['internal_issue_id']) ? $issue['internal_issue_id'] : null; ?>
+                          <?php if (!empty($iid) && !empty($issueCoworkers[$iid])): ?>
+                            <?php foreach ($issueCoworkers[$iid] as $coworker): ?>
+                              <span class="badge bg-secondary"><?= htmlspecialchars($coworker) ?></span>
+                            <?php endforeach; ?>
+                          <?php else: ?>
+                            <span class="text-muted">None</span>
+                          <?php endif; ?>
+                        </td>
+                        <td><?= !empty($issue['display_last_update']) ? date('Y-m-d H:i', strtotime($issue['display_last_update'])) : 'N/A' ?></td>
+                        <td><?= htmlspecialchars($issue['display_status']) ?></td>
+                      </tr>
+                    <?php endforeach; ?>
+                  <?php else: ?>
+                    <tr><td colspan="6" class="text-center text-muted">No saved issues found.</td></tr>
+                  <?php endif; ?>
+                </tbody>
+              </table>
             </div>
+          </div>
         </div>
+      </div>
     </div>
-</section>
+  </section>
+</main>
 <?php require_once __DIR__ . '/template/footer.php'; ?>

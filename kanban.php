@@ -45,7 +45,7 @@ function fetchJiraIssue($keyname, $jiraDomain, $jiraEmail, $jiraToken) {
 
 $mysqli = new mysqli($DB_HOST, $DB_USER, $DB_PASS, $DB_NAME, $DB_PORT);
 if ($mysqli->connect_errno) {
-    echo "<div class='alert alert-danger'>Failed to connect to MySQL: " . $mysqli->connect_error . "</div>";
+    echo "<div class='alert alert-danger' role='alert'>Failed to connect to MySQL: " . $mysqli->connect_error . "</div>";
     include __DIR__ . "/template/footer.php";
     exit;
 }
@@ -220,82 +220,85 @@ $laneColors = [
     'bg-primary', 'bg-success', 'bg-warning', 'bg-info', 'bg-secondary', 'bg-dark', 'bg-light text-dark'
 ];
 ?>
-<h1 class="mb-4">Kanban Board</h1>
-<?php if ($activeTag || $activeCoworker): ?>
-  <div class="mb-3">
-    <span class="badge bg-primary">
-      Filter:
-      <?php if ($activeTag): ?>
-        Tag <strong>#<?= htmlspecialchars($activeTag) ?></strong>
-      <?php endif; ?>
-      <?php if ($activeCoworker): ?>
-        Coworker <strong><?= htmlspecialchars($activeCoworker) ?></strong>
-      <?php endif; ?>
-    </span>
-    <a href="kanban.php" class="badge bg-danger text-light ms-2" style="text-decoration:none;">Clear filter</a>
-  </div>
-<?php endif; ?>
-<div class="kanban-scroll" style="overflow-x:auto; white-space:nowrap; padding-bottom:1em;">
-  <div class="d-flex flex-row" style="gap:1.5em;">
-    <?php foreach ($columns as $i => $col): ?>
-      <div class="kanban-col card mb-3" style="min-width:340px; display:inline-block; vertical-align:top;">
-        <div class="card-header text-white text-center <?= $laneColors[$i % count($laneColors)] ?>">
-          <strong><?= htmlspecialchars($col['name']) ?></strong>
-        </div>
-        <div class="card-body" style="background:#f8f9fa; min-height:220px;">
-          <?php if (!empty($issuesByColumnAndLane[$col['id']])): ?>
-            <?php foreach ($issuesByColumnAndLane[$col['id']] as $jiraStatus => $laneIssues): ?>
-              <div class="mb-3">
-                <div class="swimlane-header mb-2" style="font-weight:bold; color:#333; background:#e9ecef; padding:0.25em 0.5em; border-radius:4px;">
-                  <?= htmlspecialchars($jiraStatus) ?>
-                </div>
-                <?php foreach ($laneIssues as $issue): ?>
-                  <div class="card mb-2 shadow-sm" style="font-size:0.97em;">
-                    <div class="card-body p-2">
-                      <h6 class="card-title mb-1" style="font-size:1em; word-break:break-word; white-space:normal;">
-                        <a href="view.php?key=<?= rawurlencode(isset($issue['keyname']) ? $issue['keyname'] : '') ?>" style="text-decoration:none; font-weight:bold; color:inherit;">
-                          <?= htmlspecialchars(isset($issue['keyname']) ? $issue['keyname'] : '[No JIRA key]') ?>
-                        </a>: <?= htmlspecialchars(isset($issue['jira_summary']) ? $issue['jira_summary'] : '[No summary]') ?>
-                      </h6>
-                      <div class="mb-1">
-                        <span class="badge bg-info text-dark">
-                          <?php if (isset($issue['source_type']) && $issue['source_type'] === 'github'): ?>
-                            GitHub Status: <?= htmlspecialchars(isset($issue['jira_status']) ? $issue['jira_status'] : '[No GitHub Status]') ?>
-                          <?php else: ?>
-                            JIRA Status: <?= htmlspecialchars(isset($issue['jira_status']) ? $issue['jira_status'] : '[No JIRA Status]') ?>
-                          <?php endif; ?>
-                        </span>
-                        <span class="badge bg-light text-dark">Assignee: <?= htmlspecialchars(isset($issue['jira_assignee']) ? $issue['jira_assignee'] : '[No assignee]') ?></span>
-                      </div>
-                      <div class="mb-1">
-                        <?php if (!empty($issueCoworkers[$issue['internal_issue_id']])): ?>
-                          <?php foreach ($issueCoworkers[$issue['internal_issue_id']] as $coworker): ?>
-                            <a href="kanban.php?coworker=<?= rawurlencode($coworker) ?>" class="badge bg-secondary text-light" style="text-decoration:none;"><?= htmlspecialchars($coworker) ?></a>
-                          <?php endforeach; ?>
-                        <?php else: ?>
-                          <span class="badge bg-light text-dark">No coworkers</span>
-                        <?php endif; ?>
-                        <?php if (!empty($issue['tags'])): ?>
-                          <?php foreach ($issue['tags'] as $tag): ?>
-                            <a href="kanban.php?tag=<?= rawurlencode($tag) ?>" class="badge bg-success ms-1" style="text-decoration:none;">#<?= htmlspecialchars($tag) ?></a>
-                          <?php endforeach; ?>
-                        <?php endif; ?>
-                      </div>
-                      <?php if (!empty($issue['notes'])): ?>
-                        <div class="mb-1"><span class="badge bg-warning text-dark">Notes</span> <?= nl2br(htmlspecialchars($issue['notes'])) ?></div>
-                      <?php endif; ?>
-                      <div class="text-muted" style="font-size:0.85em;">Last updated: <?= !empty($issue['jira_updated']) ? date('Y-m-d H:i', strtotime($issue['jira_updated'])) : 'N/A' ?></div>
-                    </div>
+<main id="main-content" tabindex="-1">
+  <h1 class="visually-hidden">Kanban Board</h1>
+  <h1 class="mb-4">Kanban Board</h1>
+  <?php if ($activeTag || $activeCoworker): ?>
+    <div class="mb-3">
+      <span class="badge bg-primary">
+        Filter:
+        <?php if ($activeTag): ?>
+          Tag <strong>#<?= htmlspecialchars($activeTag) ?></strong>
+        <?php endif; ?>
+        <?php if ($activeCoworker): ?>
+          Coworker <strong><?= htmlspecialchars($activeCoworker) ?></strong>
+        <?php endif; ?>
+      </span>
+      <a href="kanban.php" class="badge bg-danger text-light ms-2" style="text-decoration:none;">Clear filter</a>
+    </div>
+  <?php endif; ?>
+  <div class="kanban-scroll" style="overflow-x:auto; white-space:nowrap; padding-bottom:1em;">
+    <div class="d-flex flex-row" style="gap:1.5em;">
+      <?php foreach ($columns as $i => $col): ?>
+        <div class="kanban-col card mb-3" style="min-width:340px; display:inline-block; vertical-align:top;">
+          <div class="card-header text-white text-center <?= $laneColors[$i % count($laneColors)] ?>">
+            <strong><?= htmlspecialchars($col['name']) ?></strong>
+          </div>
+          <div class="card-body" style="background:#f8f9fa; min-height:220px;">
+            <?php if (!empty($issuesByColumnAndLane[$col['id']])): ?>
+              <?php foreach ($issuesByColumnAndLane[$col['id']] as $jiraStatus => $laneIssues): ?>
+                <div class="mb-3">
+                  <div class="swimlane-header mb-2" style="font-weight:bold; color:#333; background:#e9ecef; padding:0.25em 0.5em; border-radius:4px;">
+                    <?= htmlspecialchars($jiraStatus) ?>
                   </div>
-                <?php endforeach; ?>
-              </div>
-            <?php endforeach; ?>
-          <?php else: ?>
-            <div class="text-muted text-center" style="margin-top:2em;">No issues in this column.</div>
-          <?php endif; ?>
+                  <?php foreach ($laneIssues as $issue): ?>
+                    <div class="card mb-2 shadow-sm" style="font-size:0.97em;">
+                      <div class="card-body p-2">
+                        <h6 class="card-title mb-1" style="font-size:1em; word-break:break-word; white-space:normal;">
+                          <a href="view.php?key=<?= rawurlencode(isset($issue['keyname']) ? $issue['keyname'] : '') ?>" style="text-decoration:none; font-weight:bold; color:inherit;">
+                            <?= htmlspecialchars(isset($issue['keyname']) ? $issue['keyname'] : '[No JIRA key]') ?>
+                          </a>: <?= htmlspecialchars(isset($issue['jira_summary']) ? $issue['jira_summary'] : '[No summary]') ?>
+                        </h6>
+                        <div class="mb-1">
+                          <span class="badge bg-info text-dark">
+                            <?php if (isset($issue['source_type']) && $issue['source_type'] === 'github'): ?>
+                              GitHub Status: <?= htmlspecialchars(isset($issue['jira_status']) ? $issue['jira_status'] : '[No GitHub Status]') ?>
+                            <?php else: ?>
+                              JIRA Status: <?= htmlspecialchars(isset($issue['jira_status']) ? $issue['jira_status'] : '[No JIRA Status]') ?>
+                            <?php endif; ?>
+                          </span>
+                          <span class="badge bg-light text-dark">Assignee: <?= htmlspecialchars(isset($issue['jira_assignee']) ? $issue['jira_assignee'] : '[No assignee]') ?></span>
+                        </div>
+                        <div class="mb-1">
+                          <?php if (!empty($issueCoworkers[$issue['internal_issue_id']])): ?>
+                            <?php foreach ($issueCoworkers[$issue['internal_issue_id']] as $coworker): ?>
+                              <a href="kanban.php?coworker=<?= rawurlencode($coworker) ?>" class="badge bg-secondary text-light" style="text-decoration:none;"><?= htmlspecialchars($coworker) ?></a>
+                            <?php endforeach; ?>
+                          <?php else: ?>
+                            <span class="badge bg-light text-dark">No coworkers</span>
+                          <?php endif; ?>
+                          <?php if (!empty($issue['tags'])): ?>
+                            <?php foreach ($issue['tags'] as $tag): ?>
+                              <a href="kanban.php?tag=<?= rawurlencode($tag) ?>" class="badge bg-success ms-1" style="text-decoration:none;">#<?= htmlspecialchars($tag) ?></a>
+                            <?php endforeach; ?>
+                          <?php endif; ?>
+                        </div>
+                        <?php if (!empty($issue['notes'])): ?>
+                          <div class="mb-1"><span class="badge bg-warning text-dark">Notes</span> <?= nl2br(htmlspecialchars($issue['notes'])) ?></div>
+                        <?php endif; ?>
+                        <div class="text-muted" style="font-size:0.85em;">Last updated: <?= !empty($issue['jira_updated']) ? date('Y-m-d H:i', strtotime($issue['jira_updated'])) : 'N/A' ?></div>
+                      </div>
+                    </div>
+                  <?php endforeach; ?>
+                </div>
+              <?php endforeach; ?>
+            <?php else: ?>
+              <div class="text-muted text-center" style="margin-top:2em;">No issues in this column.</div>
+            <?php endif; ?>
+          </div>
         </div>
-      </div>
-    <?php endforeach; ?>
+      <?php endforeach; ?>
+    </div>
   </div>
-</div>
-<?php include __DIR__ . "/template/footer.php"; ?>
+</main>
+<?php include __DIR__ . '/template/footer.php'; ?>

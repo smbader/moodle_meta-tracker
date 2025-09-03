@@ -1,0 +1,8 @@
+default:
+  suites:
+    default:
+      contexts:
+        - App\Behat\FeatureContext
+      paths: [ "%paths.base%/features" ]
+  autoload:
+    '': "%paths.base%/features/bootstrap"
