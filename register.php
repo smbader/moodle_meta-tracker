@@ -3,6 +3,8 @@
 session_start();
 require_once 'config.php';
 
+$pageTitle = 'Register';
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $fullname = trim($_POST['fullname'] ?? '');
     $email = trim($_POST['email'] ?? '');
@@ -36,20 +38,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 }
+include 'template/header.php';
 ?>
-<!DOCTYPE html>
-<html>
-<head><title>Register</title></head>
-<body>
-<h2>Register</h2>
-<?php if (!empty($errors)) { echo '<ul><li>' . implode('</li><li>', $errors) . '</li></ul>'; } ?>
-<form method="post">
-    <label>Full Name: <input type="text" name="fullname" required></label><br>
-    <label>Email: <input type="email" name="email" required></label><br>
-    <label>Password: <input type="password" name="password" required></label><br>
-    <button type="submit">Register</button>
-</form>
-<a href="login.php">Already have an account? Login</a>
-</body>
-</html>
-
+<div class="container d-flex justify-content-center align-items-center" style="min-height: 80vh;">
+  <div class="card shadow-sm p-4" style="min-width: 350px; max-width: 400px; width: 100%;">
+    <h2 class="mb-4 text-center">Register</h2>
+    <?php if (!empty($errors)) { ?>
+      <div class="alert alert-danger">
+        <ul class="mb-0">
+          <?php foreach ($errors as $error) { echo '<li>' . htmlspecialchars($error) . '</li>'; } ?>
+        </ul>
+      </div>
+    <?php } ?>
+    <form method="post">
+      <div class="mb-3">
+        <label for="fullname" class="form-label">Full Name</label>
+        <input type="text" class="form-control" id="fullname" name="fullname" required>
+      </div>
+      <div class="mb-3">
+        <label for="email" class="form-label">Email</label>
+        <input type="email" class="form-control" id="email" name="email" required>
+      </div>
+      <div class="mb-3">
+        <label for="password" class="form-label">Password</label>
+        <input type="password" class="form-control" id="password" name="password" required>
+      </div>
+      <button type="submit" class="btn btn-primary w-100">Register</button>
+    </form>
+    <div class="mt-3 text-center">
+      <a href="login.php">Already have an account? Login</a>
+    </div>
+  </div>
+</div>
+<?php include 'template/footer.php'; ?>
